@@ -86,6 +86,8 @@ export const MOCK_PREDICTIONS: Prediction[] = [
     away: 1,
     submittedAt: iso(-2 * HOUR),
     points: null, // live, not settled
+    boost: null,
+    secondary: null,
   },
   {
     fixtureId: 104,
@@ -93,7 +95,9 @@ export const MOCK_PREDICTIONS: Prediction[] = [
     home: 2,
     away: 0,
     submittedAt: iso(-5 * HOUR),
-    points: 10, // exact
+    points: 20, // exact, with Points ×2
+    boost: "double_points",
+    secondary: null,
   },
 ];
 

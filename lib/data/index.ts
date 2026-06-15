@@ -16,19 +16,21 @@ import {
   MOCK_PREDICTIONS,
 } from "@/lib/mock/fixtures";
 import type {
+  BoostType,
   Fixture,
   FixtureStatus,
   LeaderboardEntry,
   Prediction,
   UserProfile,
 } from "@/lib/domain/types";
+import { BOOST_TYPES, leaderboardMonth } from "@/lib/domain/boosts";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
-import { isApiFootballConfigured } from "@/lib/api-football/env";
 import {
   fetchFixtureById,
   fetchFixturesByDate,
-} from "@/lib/api-football/fixtures";
+  isSportsApiConfigured,
+} from "@/lib/sports";
 
 /** A row from the `predictions` table. */
 interface PredictionRow {
@@ -37,7 +39,14 @@ interface PredictionRow {
   away_goals: number;
   points: number | null;
   updated_at: string;
+  boost: BoostType | null;
+  home_goals_2: number | null;
+  away_goals_2: number | null;
 }
+
+/** Columns selected for every prediction read. */
+const PREDICTION_COLS =
+  "fixture_id, home_goals, away_goals, points, updated_at, boost, home_goals_2, away_goals_2";
 
 function mapPredictionRow(row: PredictionRow, userId: string): Prediction {
   return {
@@ -47,6 +56,11 @@ function mapPredictionRow(row: PredictionRow, userId: string): Prediction {
     away: row.away_goals,
     points: row.points,
     submittedAt: row.updated_at,
+    boost: row.boost,
+    secondary:
+      row.home_goals_2 != null && row.away_goals_2 != null
+        ? { home: row.home_goals_2, away: row.away_goals_2 }
+        : null,
   };
 }
 
@@ -115,16 +129,45 @@ function sortFixtures(fixtures: Fixture[]): Fixture[] {
   });
 }
 
+/** All fixtures held in the Supabase cache (fallback when the API is down). */
+async function getCachedFixtures(): Promise<Fixture[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data } = await supabase.from("fixtures").select("*").order("kickoff");
+  return ((data as FixtureRow[] | null) ?? []).map(mapFixtureRow);
+}
+
 export async function getFixtures(): Promise<Fixture[]> {
-  if (isApiFootballConfigured()) {
-    return sortFixtures(await fetchFixturesByDate());
+  if (isSportsApiConfigured()) {
+    try {
+      return sortFixtures(await fetchFixturesByDate());
+    } catch (err) {
+      // Rate limit / outage: degrade gracefully to the cached fixtures rather
+      // than crashing the page.
+      console.error(
+        "[getFixtures] API-Football unavailable, serving cached fixtures:",
+        err,
+      );
+      const cached = await getCachedFixtures();
+      if (cached.length > 0) return sortFixtures(cached);
+      return isSupabaseConfigured() ? [] : sortFixtures(MOCK_FIXTURES);
+    }
   }
   return sortFixtures(MOCK_FIXTURES);
 }
 
 export async function getFixture(id: number): Promise<Fixture | null> {
-  if (isApiFootballConfigured()) {
-    return fetchFixtureById(id);
+  if (isSportsApiConfigured()) {
+    try {
+      return await fetchFixtureById(id);
+    } catch (err) {
+      console.error(
+        `[getFixture ${id}] API-Football unavailable, serving cache:`,
+        err,
+      );
+      const [hit] = await getFixturesByIds([id]);
+      return hit ?? null;
+    }
   }
   return MOCK_FIXTURES.find((f) => f.id === id) ?? null;
 }
@@ -155,7 +198,7 @@ export async function getMyPredictions(): Promise<Prediction[]> {
 
   const { data } = await supabase
     .from("predictions")
-    .select("fixture_id, home_goals, away_goals, points, updated_at")
+    .select(PREDICTION_COLS)
     .eq("user_id", user.id);
 
   return ((data as PredictionRow[] | null) ?? []).map((row) =>
@@ -182,12 +225,45 @@ export async function getPredictionForFixture(
 
   const { data } = await supabase
     .from("predictions")
-    .select("fixture_id, home_goals, away_goals, points, updated_at")
+    .select(PREDICTION_COLS)
     .eq("user_id", user.id)
     .eq("fixture_id", fixtureId)
     .maybeSingle();
 
   return data ? mapPredictionRow(data as PredictionRow, user.id) : null;
+}
+
+/**
+ * Which boosts the player still has for a given leaderboard month. One of each
+ * type is granted per month; a type is spent once attached to a prediction
+ * whose fixture falls in that month.
+ */
+export async function getMyBoostStock(
+  month: string = leaderboardMonth(),
+): Promise<{ used: BoostType[]; remaining: BoostType[] }> {
+  if (!isSupabaseConfigured()) {
+    return { used: [], remaining: [...BOOST_TYPES] };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { used: [], remaining: [...BOOST_TYPES] };
+
+  const { data } = await supabase
+    .from("predictions")
+    .select("boost")
+    .eq("user_id", user.id)
+    .eq("bonus_month", month)
+    .not("boost", "is", null);
+
+  const used = [
+    ...new Set(
+      ((data as { boost: BoostType }[] | null) ?? []).map((r) => r.boost),
+    ),
+  ];
+  return { used, remaining: BOOST_TYPES.filter((b) => !used.includes(b)) };
 }
 
 interface LeaderboardRow {
@@ -200,6 +276,34 @@ interface ProfileRow {
   id: string;
   username: string;
 }
+
+/**
+ * TEMP — static players injected on top of the real database users so the
+ * podium / leaderboard view can be exercised while few accounts have scored.
+ * Flip `WITH_TEST_PLAYERS` to false (or delete the block in buildLeaderboard)
+ * to remove them once real data fills in.
+ */
+const WITH_TEST_PLAYERS = true;
+const TEST_PLAYERS: Omit<LeaderboardEntry, "rank">[] = [
+  { userId: "test_1", username: "ScorePerfect", points: 312, exactScores: 21 },
+  { userId: "test_2", username: "PronoKing", points: 298, exactScores: 18 },
+  { userId: "test_3", username: "Mbappe_fan", points: 271, exactScores: 16 },
+  { userId: "test_4", username: "TacticsNerd", points: 244, exactScores: 12 },
+  { userId: "test_5", username: "GegenPress", points: 219, exactScores: 11 },
+  { userId: "test_6", username: "VAR_hater", points: 187, exactScores: 9 },
+  { userId: "test_7", username: "CatenaccioKid", points: 173, exactScores: 8 },
+  { userId: "test_8", username: "TikiTaka", points: 161, exactScores: 8 },
+  { userId: "test_9", username: "ParisSaint", points: 154, exactScores: 7 },
+  { userId: "test_10", username: "LaRemontada", points: 142, exactScores: 6 },
+  { userId: "test_11", username: "PanenkaPro", points: 131, exactScores: 6 },
+  { userId: "test_12", username: "OffsideTrap", points: 118, exactScores: 5 },
+  { userId: "test_13", username: "NutmegNinja", points: 104, exactScores: 4 },
+  { userId: "test_14", username: "DerbyDay", points: 92, exactScores: 4 },
+  { userId: "test_15", username: "ZoneMarking", points: 77, exactScores: 3 },
+  { userId: "test_16", username: "BoxToBox", points: 63, exactScores: 2 },
+  { userId: "test_17", username: "FalseNine", points: 48, exactScores: 2 },
+  { userId: "test_18", username: "LongBall", points: 31, exactScores: 1 },
+];
 
 /**
  * Full monthly ranking, including players with 0 points: every profile is
@@ -231,6 +335,9 @@ async function buildLeaderboard(): Promise<LeaderboardEntry[]> {
       exactScores: s?.exactScores ?? 0,
     };
   });
+
+  // TEMP — pad with static test players so the podium has something to show.
+  if (WITH_TEST_PLAYERS) entries.push(...TEST_PLAYERS);
 
   entries.sort(
     (a, b) =>

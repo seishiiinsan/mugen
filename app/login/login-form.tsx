@@ -32,6 +32,17 @@ export function LoginForm({
 
   return (
     <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {isSignup ? "Créer un compte" : "Bon retour"}
+        </h1>
+        <p className="mt-1 text-sm text-muted">
+          {isSignup
+            ? "Quelques secondes pour rejoindre la partie."
+            : "Connectez-vous pour retrouver vos pronostics."}
+        </p>
+      </div>
+
       <div className="grid grid-cols-2 rounded-lg border border-border bg-surface p-1 text-sm">
         <button
           type="button"
@@ -72,22 +83,34 @@ export function LoginForm({
       <form action={isSignup ? signUpAction : signInAction} className="space-y-3">
         <input type="hidden" name="redirect" value={redirectTo} />
 
-        {isSignup && (
+        {/* Signup adds the pseudo beside the e-mail so the form keeps the same
+            number of rows as sign-in — toggling never shifts the layout. */}
+        {isSignup ? (
+          <div className="grid grid-cols-2 gap-3">
+            <Field
+              name="username"
+              label="Pseudo"
+              type="text"
+              placeholder="Votre pseudo"
+              autoComplete="username"
+            />
+            <Field
+              name="email"
+              label="E-mail"
+              type="email"
+              placeholder="vous@exemple.fr"
+              autoComplete="email"
+            />
+          </div>
+        ) : (
           <Field
-            name="username"
-            label="Pseudo"
-            type="text"
-            placeholder="Votre pseudo"
-            autoComplete="username"
+            name="email"
+            label="E-mail"
+            type="email"
+            placeholder="vous@exemple.fr"
+            autoComplete="email"
           />
         )}
-        <Field
-          name="email"
-          label="E-mail"
-          type="email"
-          placeholder="vous@exemple.fr"
-          autoComplete="email"
-        />
         <Field
           name="password"
           label="Mot de passe"

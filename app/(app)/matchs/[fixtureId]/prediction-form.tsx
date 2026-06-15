@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { MAX_GOALS } from "@/lib/domain/predictions";
+import { BOOSTS, BOOST_TYPES, type BoostType } from "@/lib/domain/boosts";
 import { TeamCrest } from "../../_components/team-crest";
 import { submitPrediction, type PredictionFormState } from "./actions";
 
@@ -12,6 +13,9 @@ export function PredictionForm({
   homeLogo,
   awayLogo,
   initial,
+  initialBoost,
+  initialSecondary,
+  boostStock,
 }: {
   fixtureId: number;
   homeName: string;
@@ -19,6 +23,9 @@ export function PredictionForm({
   homeLogo?: string;
   awayLogo?: string;
   initial: { home: number; away: number } | null;
+  initialBoost: BoostType | null;
+  initialSecondary: { home: number; away: number } | null;
+  boostStock: BoostType[];
 }) {
   const [state, action, pending] = useActionState<PredictionFormState, FormData>(
     submitPrediction,
@@ -29,6 +36,10 @@ export function PredictionForm({
   const [home, setHome] = useState(start.home);
   const [away, setAway] = useState(start.away);
 
+  const [boost, setBoost] = useState<BoostType | null>(initialBoost);
+  const [home2, setHome2] = useState(initialSecondary?.home ?? 0);
+  const [away2, setAway2] = useState(initialSecondary?.away ?? 0);
+
   return (
     <form
       action={action}
@@ -37,6 +48,9 @@ export function PredictionForm({
       <input type="hidden" name="fixtureId" value={fixtureId} />
       <input type="hidden" name="home" value={home} />
       <input type="hidden" name="away" value={away} />
+      <input type="hidden" name="boost" value={boost ?? ""} />
+      <input type="hidden" name="home2" value={home2} />
+      <input type="hidden" name="away2" value={away2} />
 
       <div className="flex items-start justify-center gap-4">
         <Stepper
@@ -53,6 +67,65 @@ export function PredictionForm({
           onChange={setAway}
         />
       </div>
+
+      {/* Boost selector — one of each type per month */}
+      <div className="mt-5 border-t border-border pt-4">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-xs font-medium uppercase tracking-wide text-faint">
+            Boost
+          </span>
+          <span className="text-xs text-faint">1 par type / mois</span>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {BOOST_TYPES.map((t) => {
+            const available = boostStock.includes(t) || initialBoost === t;
+            const active = boost === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                disabled={!available}
+                onClick={() => setBoost(active ? null : t)}
+                title={available ? BOOSTS[t].rule : "Déjà utilisé ce mois"}
+                className={`rounded-lg border px-2 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                  active
+                    ? "border-accent bg-accent/10 text-accent"
+                    : "border-border text-muted hover:border-border-strong"
+                }`}
+              >
+                {BOOSTS[t].name}
+              </button>
+            );
+          })}
+        </div>
+        {boost && (
+          <p className="mt-2 text-xs text-muted">{BOOSTS[boost].rule}</p>
+        )}
+      </div>
+
+      {/* Double chance — second prediction, best of the two is kept */}
+      {boost === "double_chance" && (
+        <div className="mt-4 rounded-lg border border-border bg-surface-2 p-4">
+          <p className="mb-3 text-center text-xs text-faint">
+            2ᵉ pronostic — on garde le meilleur
+          </p>
+          <div className="flex items-start justify-center gap-4">
+            <Stepper
+              label={homeName}
+              logoUrl={homeLogo}
+              value={home2}
+              onChange={setHome2}
+            />
+            <span className="pt-12 font-mono text-2xl text-faint">–</span>
+            <Stepper
+              label={awayName}
+              logoUrl={awayLogo}
+              value={away2}
+              onChange={setAway2}
+            />
+          </div>
+        </div>
+      )}
 
       {state.error && (
         <p className="mt-4 text-center text-sm text-danger">{state.error}</p>

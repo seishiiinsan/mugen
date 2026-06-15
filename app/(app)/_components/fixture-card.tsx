@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Fixture, Prediction } from "@/lib/domain/types";
-import { scorePrediction } from "@/lib/domain/scoring";
+import { BOOSTS, scoreBoosted } from "@/lib/domain/boosts";
 import { formatMatchDay, formatTime } from "@/lib/ui/format";
 import { PredictionsIcon } from "./icons";
 import { StatusBadge } from "./status-badge";
@@ -23,10 +23,12 @@ export function FixtureCard({
     prediction == null
       ? null
       : fixture.status === "finished" && fixture.score
-        ? scorePrediction(
-            { home: prediction.home, away: prediction.away },
-            fixture.score,
-          )
+        ? scoreBoosted({
+            primary: { home: prediction.home, away: prediction.away },
+            secondary: prediction.secondary,
+            actual: fixture.score,
+            boost: prediction.boost,
+          }).points
         : prediction.points;
 
   return (
@@ -87,6 +89,11 @@ export function FixtureCard({
             <span className="rounded-md bg-accent/10 px-1.5 py-0.5 font-mono font-semibold tabular-nums text-accent">
               {prediction.home}-{prediction.away}
             </span>
+            {prediction.boost && (
+              <span title={BOOSTS[prediction.boost].name} aria-label={BOOSTS[prediction.boost].name}>
+                {BOOSTS[prediction.boost].emoji}
+              </span>
+            )}
           </div>
           {earnedPoints != null ? (
             <span className="rounded-full bg-success/10 px-2 py-0.5 font-mono text-xs font-medium text-success">

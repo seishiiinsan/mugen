@@ -2,6 +2,8 @@
 
 import { refresh } from "next/cache";
 import { getFixture } from "@/lib/data";
+import { BOOST_TYPES } from "@/lib/domain/boosts";
+import type { BoostType } from "@/lib/domain/types";
 import { clampGoals, isPredictionOpen } from "@/lib/domain/predictions";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -29,6 +31,13 @@ export async function submitPrediction(
   const fixtureId = Number(formData.get("fixtureId"));
   const home = clampGoals(Number(formData.get("home")));
   const away = clampGoals(Number(formData.get("away")));
+
+  const boostRaw = String(formData.get("boost") ?? "");
+  const boost = (BOOST_TYPES as readonly string[]).includes(boostRaw)
+    ? (boostRaw as BoostType)
+    : null;
+  const home2 = clampGoals(Number(formData.get("home2")));
+  const away2 = clampGoals(Number(formData.get("away2")));
 
   const fixture = await getFixture(fixtureId);
   if (!fixture) return { error: "Match introuvable." };
@@ -78,19 +87,26 @@ export async function submitPrediction(
     return { error: "Erreur lors de l'enregistrement du match.", values: { home, away } };
   }
 
-  // 2. Upsert the prediction (RLS + lock/points triggers enforce the rules).
+  // 2. Upsert the prediction (RLS + lock/points triggers enforce the rules; the
+  //    partial unique index enforces one boost of each type per month).
   const { error: predictionError } = await supabase.from("predictions").upsert(
     {
       user_id: user.id,
       fixture_id: fixture.id,
       home_goals: home,
       away_goals: away,
+      boost,
+      home_goals_2: boost === "double_chance" ? home2 : null,
+      away_goals_2: boost === "double_chance" ? away2 : null,
     },
     { onConflict: "user_id,fixture_id" },
   );
   if (predictionError) {
     return {
-      error: "Impossible d'enregistrer le pronostic.",
+      error:
+        predictionError.code === "23505"
+          ? "Tu as déjà utilisé ce boost ce mois-ci."
+          : "Impossible d'enregistrer le pronostic.",
       values: { home, away },
     };
   }

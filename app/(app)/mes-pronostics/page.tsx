@@ -1,13 +1,15 @@
 import Link from "next/link";
 import type { Fixture, Prediction } from "@/lib/domain/types";
 import { getFixturesByIds, getMyPredictions } from "@/lib/data";
-import { scorePrediction } from "@/lib/domain/scoring";
+import { scoreBoosted } from "@/lib/domain/boosts";
 import { FixtureCard } from "../_components/fixture-card";
+import { PredictionsIcon } from "../_components/icons";
 
 interface Row {
   prediction: Prediction;
   fixture: Fixture;
   earned: number | null;
+  exact: boolean;
 }
 
 export default async function MesPronosticsPage() {
@@ -19,11 +21,19 @@ export default async function MesPronosticsPage() {
     .map((p) => {
       const fixture = byId.get(p.fixtureId);
       if (!fixture) return null;
-      const earned: number | null =
-        fixture.status === "finished" && fixture.score
-          ? scorePrediction({ home: p.home, away: p.away }, fixture.score)
-          : null;
-      return { prediction: p, fixture, earned };
+      let earned: number | null = null;
+      let exact = false;
+      if (fixture.status === "finished" && fixture.score) {
+        const r = scoreBoosted({
+          primary: { home: p.home, away: p.away },
+          secondary: p.secondary,
+          actual: fixture.score,
+          boost: p.boost,
+        });
+        earned = r.points;
+        exact = r.exact;
+      }
+      return { prediction: p, fixture, earned, exact };
     })
     .filter((r): r is Row => r !== null);
 
@@ -43,16 +53,32 @@ export default async function MesPronosticsPage() {
     );
 
   const totalPoints = finished.reduce((sum, r) => sum + (r.earned ?? 0), 0);
-  const exactScores = finished.filter((r) => r.earned === 10).length;
+  const exactScores = finished.filter((r) => r.exact).length;
 
   return (
     <section>
-      <h1 className="mb-1 text-xl font-semibold tracking-tight">
-        Mes pronostics
-      </h1>
-      <p className="mb-5 text-sm text-muted">
-        Vos pronostics soumis, résultats et points gagnés.
-      </p>
+      <header className="mb-5">
+        <div className="flex items-center gap-2.5">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent/10 text-accent">
+            <PredictionsIcon className="size-5" />
+          </span>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-semibold tracking-tight">
+                Mes pronostics
+              </h1>
+              {pending.length > 0 && (
+                <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                  {pending.length} à suivre
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-muted">
+              Vos pronostics soumis, résultats et points gagnés.
+            </p>
+          </div>
+        </div>
+      </header>
 
       {rows.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border p-10 text-center">

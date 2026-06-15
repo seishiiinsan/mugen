@@ -1,8 +1,8 @@
 import "server-only";
 
-import { isApiFootballConfigured } from "@/lib/api-football/env";
-import { fetchFixtureById } from "@/lib/api-football/fixtures";
-import { scorePrediction } from "@/lib/domain/scoring";
+import { fetchFixtureById, isSportsApiConfigured } from "@/lib/sports";
+import { scoreBoosted } from "@/lib/domain/boosts";
+import type { BoostType } from "@/lib/domain/types";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 
 export interface SettleResult {
@@ -24,7 +24,7 @@ export interface SettleResult {
  * `protect_points` / `enforce_lock` triggers to write points.
  */
 export async function settlePredictions(): Promise<SettleResult> {
-  if (!isAdminConfigured() || !isApiFootballConfigured()) {
+  if (!isAdminConfigured() || !isSportsApiConfigured()) {
     return { fixturesChecked: 0, fixturesSettled: 0, predictionsUpdated: 0 };
   }
 
@@ -67,23 +67,48 @@ export async function settlePredictions(): Promise<SettleResult> {
       })
       .eq("id", fixtureId);
 
+    // Cancelled / postponed: refund attached boosts (frees the monthly stock)
+    // and leave points pending.
+    if (fixture.status === "cancelled" || fixture.status === "postponed") {
+      await admin
+        .from("predictions")
+        .update({ boost: null, home_goals_2: null, away_goals_2: null })
+        .eq("fixture_id", fixtureId)
+        .not("boost", "is", null);
+    }
+
     if (fixture.status !== "finished" || !fixture.score) continue;
     fixturesSettled++;
 
     const { data: preds } = await admin
       .from("predictions")
-      .select("id, home_goals, away_goals")
+      .select("id, home_goals, away_goals, boost, home_goals_2, away_goals_2")
       .eq("fixture_id", fixtureId)
       .is("points", null);
 
     for (const p of (preds as
-      | { id: string; home_goals: number; away_goals: number }[]
+      | {
+          id: string;
+          home_goals: number;
+          away_goals: number;
+          boost: BoostType | null;
+          home_goals_2: number | null;
+          away_goals_2: number | null;
+        }[]
       | null) ?? []) {
-      const points = scorePrediction(
-        { home: p.home_goals, away: p.away_goals },
-        fixture.score,
-      );
-      await admin.from("predictions").update({ points }).eq("id", p.id);
+      const { points, basePoints } = scoreBoosted({
+        primary: { home: p.home_goals, away: p.away_goals },
+        secondary:
+          p.home_goals_2 != null && p.away_goals_2 != null
+            ? { home: p.home_goals_2, away: p.away_goals_2 }
+            : null,
+        actual: fixture.score,
+        boost: p.boost,
+      });
+      await admin
+        .from("predictions")
+        .update({ points, base_points: basePoints })
+        .eq("id", p.id);
       predictionsUpdated++;
     }
   }

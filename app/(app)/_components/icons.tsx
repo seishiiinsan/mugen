@@ -70,6 +70,45 @@ export function ShopIcon({ className }: IconProps) {
   );
 }
 
+export function CrownIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M4 9l3.2 2.4L12 6l4.8 5.4L20 9l-1.3 8H5.3L4 9z" />
+      <path d="M5.3 20h13.4" />
+    </svg>
+  );
+}
+
+export function BadgeIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="9" r="6" />
+      <path d="M9.5 9l1.7 1.7 3.3-3.4" />
+      <path d="M8 14l-1.2 7 5.2-3 5.2 3L16 14" />
+    </svg>
+  );
+}
+
+export function LogoutIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M15 4h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-2" />
+      <path d="M10 16l-4-4 4-4" />
+      <path d="M6 12h10" />
+    </svg>
+  );
+}
+
+export function InfoIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5" />
+      <path d="M12 8h.01" />
+    </svg>
+  );
+}
+
 export function LockIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

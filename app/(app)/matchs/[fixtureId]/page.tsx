@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getFixture, getPredictionForFixture } from "@/lib/data";
+import { getFixture, getMyBoostStock, getPredictionForFixture } from "@/lib/data";
 import { isPredictionOpen, lockTime } from "@/lib/domain/predictions";
-import { SCORING_RULES, scorePrediction } from "@/lib/domain/scoring";
+import { SCORING_RULES } from "@/lib/domain/scoring";
+import { BOOSTS, leaderboardMonth, scoreBoosted } from "@/lib/domain/boosts";
+import type { BoostType } from "@/lib/domain/types";
 import { formatKickoff, formatMatchDay, formatTime } from "@/lib/ui/format";
 import { ChevronLeftIcon, LockIcon } from "../../_components/icons";
 import { StatusBadge } from "../../_components/status-badge";
@@ -24,13 +26,18 @@ export default async function FixturePage(
 
   const open = isPredictionOpen(fixture);
   const settled = fixture.status === "finished" && fixture.score !== null;
-  const earnedPoints =
+  const result =
     settled && prediction
-      ? scorePrediction(
-          { home: prediction.home, away: prediction.away },
-          fixture.score!,
-        )
+      ? scoreBoosted({
+          primary: { home: prediction.home, away: prediction.away },
+          secondary: prediction.secondary,
+          actual: fixture.score!,
+          boost: prediction.boost,
+        })
       : null;
+  const boostStock = open
+    ? await getMyBoostStock(leaderboardMonth(fixture.kickoff))
+    : { used: [], remaining: [] as BoostType[] };
 
   return (
     <article className="space-y-4">
@@ -95,6 +102,9 @@ export default async function FixturePage(
                   ? { home: prediction.home, away: prediction.away }
                   : null
               }
+              initialBoost={prediction?.boost ?? null}
+              initialSecondary={prediction?.secondary ?? null}
+              boostStock={boostStock.remaining}
             />
             <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs text-faint">
               <LockIcon className="size-3.5" />
@@ -104,10 +114,16 @@ export default async function FixturePage(
           </>
         ) : (
           <ResultCard
-            prediction={prediction}
+            prediction={
+              prediction
+                ? { home: prediction.home, away: prediction.away }
+                : null
+            }
+            secondary={prediction?.secondary ?? null}
+            boost={prediction?.boost ?? null}
             actual={fixture.score}
             settled={settled}
-            earnedPoints={earnedPoints}
+            result={result}
           />
         )}
       </section>
@@ -126,14 +142,18 @@ function TeamBlock({ name, logoUrl }: { name: string; logoUrl?: string }) {
 
 function ResultCard({
   prediction,
+  secondary,
+  boost,
   actual,
   settled,
-  earnedPoints,
+  result,
 }: {
   prediction: { home: number; away: number } | null;
+  secondary: { home: number; away: number } | null;
+  boost: BoostType | null;
   actual: { home: number; away: number } | null;
   settled: boolean;
-  earnedPoints: number | null;
+  result: { points: number; basePoints: number } | null;
 }) {
   if (!prediction) {
     return (
@@ -147,20 +167,36 @@ function ResultCard({
   }
 
   const label =
-    earnedPoints != null
-      ? SCORING_RULES.find((r) => r.points === earnedPoints)?.label
+    result != null
+      ? SCORING_RULES.find((r) => r.points === result.basePoints)?.label
       : null;
 
   return (
     <div className="space-y-3 rounded-xl border border-border bg-surface p-5">
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex items-center justify-between gap-2 text-sm">
         <span className="flex items-center gap-1.5 text-faint">
           <LockIcon className="size-3.5" /> Pronostic verrouillé
         </span>
-        <span className="rounded-md bg-accent/10 px-2 py-0.5 font-mono font-semibold tabular-nums text-accent">
-          {prediction.home}-{prediction.away}
+        <span className="flex items-center gap-2">
+          {boost && (
+            <span className="rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+              {BOOSTS[boost].name}
+            </span>
+          )}
+          <span className="rounded-md bg-accent/10 px-2 py-0.5 font-mono font-semibold tabular-nums text-accent">
+            {prediction.home}-{prediction.away}
+          </span>
         </span>
       </div>
+
+      {boost === "double_chance" && secondary && (
+        <div className="flex items-center justify-between text-xs text-faint">
+          <span>2ᵉ pronostic</span>
+          <span className="font-mono tabular-nums">
+            {secondary.home}-{secondary.away}
+          </span>
+        </div>
+      )}
 
       {settled && actual ? (
         <div className="space-y-3 border-t border-border pt-3">
@@ -171,13 +207,16 @@ function ResultCard({
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted">{label}</span>
+            <span className="text-sm text-muted">
+              {label}
+              {boost ? ` · ${BOOSTS[boost].name}` : ""}
+            </span>
             <span
               className={`font-mono text-lg font-bold tabular-nums ${
-                (earnedPoints ?? 0) > 0 ? "text-success" : "text-muted"
+                (result?.points ?? 0) > 0 ? "text-success" : "text-muted"
               }`}
             >
-              +{earnedPoints} pts
+              +{result?.points} pts
             </span>
           </div>
         </div>

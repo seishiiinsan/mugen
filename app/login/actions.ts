@@ -88,6 +88,9 @@ export async function signInWithGoogle(formData: FormData): Promise<void> {
     provider: "google",
     options: {
       redirectTo: `${await originUrl()}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+      // Always show Google's account chooser instead of silently reusing the
+      // only signed-in session.
+      queryParams: { prompt: "select_account" },
     },
   });
 

@@ -107,7 +107,9 @@ export default async function MatchsPage(props: PageProps<"/matchs">) {
 
       {slice.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">
-          Aucun match ne correspond à ces filtres.
+          {all.length === 0
+            ? "Aucun match disponible pour le moment. Réessaie plus tard."
+            : "Aucun match ne correspond à ces filtres."}
         </p>
       ) : (
         <div className="space-y-2.5">

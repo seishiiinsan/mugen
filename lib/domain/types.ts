@@ -46,6 +46,9 @@ export interface Score {
   away: number;
 }
 
+/** The three monthly power-ups a player can attach to a prediction. */
+export type BoostType = "double_points" | "double_chance" | "banco";
+
 /** A user's single prediction for a fixture (exact score). */
 export interface Prediction {
   fixtureId: number;
@@ -56,6 +59,10 @@ export interface Prediction {
   submittedAt: string;
   /** Points awarded once the fixture is settled; null while pending. */
   points: number | null;
+  /** Attached boost, or null. */
+  boost: BoostType | null;
+  /** Second predicted score — only set for the `double_chance` boost. */
+  secondary: Score | null;
 }
 
 export interface LeaderboardEntry {

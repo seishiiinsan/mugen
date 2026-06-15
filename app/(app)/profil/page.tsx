@@ -1,84 +1,371 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser, getMyMonthlyStats } from "@/lib/data";
-import { SCORING_RULES } from "@/lib/domain/scoring";
+import {
+  getCurrentUser,
+  getFixturesByIds,
+  getMyBoostStock,
+  getMyMonthlyStats,
+  getMyPredictions,
+} from "@/lib/data";
+import { SCORING_RULES, scorePrediction } from "@/lib/domain/scoring";
+import {
+  BOOSTS,
+  BOOST_TYPES,
+  leaderboardMonth,
+  scoreBoosted,
+} from "@/lib/domain/boosts";
 import { signOut } from "@/app/login/actions";
+import {
+  ChevronLeftIcon,
+  CrownIcon,
+  InfoIcon,
+  LogoutIcon,
+} from "../_components/icons";
+
+/** Display config for each points tier, mono-accent (no rainbow per MASTER). */
+const TIERS: { points: number; label: string; bar: string }[] = [
+  { points: 10, label: "Score exact", bar: "bg-accent" },
+  { points: 6, label: "Bon vainqueur, écart ≤ 1", bar: "bg-accent/70" },
+  { points: 4, label: "Bon vainqueur, écart moyen", bar: "bg-accent/55" },
+  { points: 3, label: "Nul exact", bar: "bg-accent/40" },
+  { points: 2, label: "Bon vainqueur, écart éloigné", bar: "bg-accent/30" },
+  { points: 0, label: "Manqué", bar: "bg-border-strong" },
+];
+
+function rankMedal(rank: number | null) {
+  if (rank === 1) return { color: "text-gold", ring: "ring-gold/40", crown: true };
+  if (rank === 2) return { color: "text-silver", ring: "ring-silver/40", crown: false };
+  if (rank === 3) return { color: "text-bronze", ring: "ring-bronze/40", crown: false };
+  return null;
+}
 
 export default async function ProfilPage() {
-  const [me, stats] = await Promise.all([
+  const [me, stats, predictions, boostStock] = await Promise.all([
     getCurrentUser(),
     getMyMonthlyStats(),
+    getMyPredictions(),
+    getMyBoostStock(),
   ]);
   if (!me) redirect("/login");
+
+  const fixtures = await getFixturesByIds(predictions.map((p) => p.fixtureId));
+  const byId = new Map(fixtures.map((f) => [f.id, f]));
+
+  // Boosts actually played this month: which match, and what it brought.
+  const thisMonth = leaderboardMonth();
+  const boostUsage = predictions
+    .filter((p) => p.boost)
+    .map((p) => {
+      const f = byId.get(p.fixtureId);
+      if (!f || leaderboardMonth(f.kickoff) !== thisMonth) return null;
+      const points =
+        f.status === "finished" && f.score
+          ? scoreBoosted({
+              primary: { home: p.home, away: p.away },
+              secondary: p.secondary,
+              actual: f.score,
+              boost: p.boost,
+            }).points
+          : p.points;
+      return { boost: p.boost!, fixture: f, points };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
+  // Settle each prediction we can, to derive lived-in stats.
+  const settled: number[] = [];
+  let pending = 0;
+  for (const p of predictions) {
+    const f = byId.get(p.fixtureId);
+    if (f && f.status === "finished" && f.score) {
+      settled.push(scorePrediction({ home: p.home, away: p.away }, f.score));
+    } else {
+      pending += 1;
+    }
+  }
+
+  const played = predictions.length;
+  const hits = settled.filter((pts) => pts > 0).length;
+  const hitRate = settled.length
+    ? Math.round((hits / settled.length) * 100)
+    : 0;
+  const best = settled.length ? Math.max(...settled) : 0;
+  const counts = TIERS.map(
+    (t) => settled.filter((pts) => pts === t.points).length,
+  );
+  const maxCount = Math.max(1, ...counts);
 
   const joined = new Intl.DateTimeFormat("fr-FR", {
     month: "long",
     year: "numeric",
   }).format(new Date(me.joinedAt));
 
+  const medal = rankMedal(stats.rank);
+
   return (
     <section className="space-y-6">
-      <header className="flex items-center gap-4">
-        <div className="flex size-16 items-center justify-center rounded-full bg-surface-2 text-2xl font-bold">
-          {me.username.charAt(0).toUpperCase()}
+      {/* Hero identity card — subtle accent wash, podium-aware rank badge */}
+      <header className="relative overflow-hidden rounded-xl border border-border bg-gradient-to-br from-accent/[0.08] via-surface to-surface p-5">
+        <div className="flex items-center gap-4">
+          <div
+            className={`grid size-16 shrink-0 place-items-center rounded-full bg-surface text-2xl font-bold ring-2 ${
+              medal ? medal.ring : "ring-accent/30"
+            }`}
+          >
+            {me.username.charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <h1 className="truncate text-2xl font-bold tracking-tight">
+              {me.username}
+            </h1>
+            <p className="text-sm capitalize text-muted">
+              Membre depuis {joined}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold">{me.username}</h1>
-          <p className="text-sm text-muted capitalize">Membre depuis {joined}</p>
-        </div>
+
+        {stats.rank != null && (
+          <div
+            className={`absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-sm font-semibold tabular-nums ${
+              medal ? medal.color : "text-muted"
+            }`}
+          >
+            {medal?.crown && <CrownIcon className="size-4" />}#{stats.rank}
+          </div>
+        )}
       </header>
 
+      {/* Headline stats */}
       <div className="grid grid-cols-3 gap-3">
-        <Stat label="Points du mois" value={stats.points} />
-        <Stat
-          label="Classement"
-          value={stats.rank != null ? `#${stats.rank}` : "—"}
-        />
+        <Stat label="Points du mois" value={stats.points} accent />
         <Stat label="Scores exacts" value={stats.exactScores} />
+        <Stat label="Pronos joués" value={played} />
       </div>
 
+      {/* Performance — réussite ring + quick facts */}
+      <div className="flex items-center gap-5 rounded-xl border border-border bg-surface p-5">
+        <Ring pct={hitRate} />
+        <div className="grid flex-1 grid-cols-3 gap-3 text-center">
+          <Fact label="Réussite" value={`${hitRate}%`} />
+          <Fact label="Meilleure perf." value={`${best} pts`} />
+          <Fact label="En attente" value={pending} />
+        </div>
+      </div>
+
+      {/* Monthly boosts */}
       <div>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-          Barème des points
+        <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-faint">
+          Boosts du mois
         </h2>
-        <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
+        <div className="grid grid-cols-3 gap-3">
+          {BOOST_TYPES.map((t) => {
+            const available = boostStock.remaining.includes(t);
+            return (
+              <div
+                key={t}
+                className={`rounded-xl border p-3 text-center ${
+                  available
+                    ? "border-accent/30 bg-accent/[0.05]"
+                    : "border-border bg-surface"
+                }`}
+                title={BOOSTS[t].rule}
+              >
+                <div
+                  className={`text-sm font-semibold ${
+                    available ? "text-accent" : "text-faint"
+                  }`}
+                >
+                  {BOOSTS[t].name}
+                </div>
+                <div className="mt-0.5 text-[11px] text-faint">
+                  {available ? "Disponible" : "Utilisé"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {boostUsage.length > 0 && (
+          <ul className="mt-3 space-y-2">
+            {boostUsage.map((u) => (
+              <li
+                key={u.fixture.id}
+                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-3"
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className="text-lg" aria-hidden>
+                    {BOOSTS[u.boost].emoji}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium">
+                      {BOOSTS[u.boost].name}
+                    </div>
+                    <div className="truncate text-xs text-faint">
+                      {u.fixture.home.name} – {u.fixture.away.name}
+                    </div>
+                  </div>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 font-mono text-xs font-semibold tabular-nums ${
+                    u.points != null
+                      ? "bg-success/10 text-success"
+                      : "text-faint"
+                  }`}
+                >
+                  {u.points != null ? `+${u.points} pts` : "en attente"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Outcome breakdown */}
+      <div>
+        <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-faint">
+          Répartition de tes pronos
+        </h2>
+        {settled.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border p-8 text-center">
+            <p className="text-sm text-muted">
+              Aucun pronostic terminé pour le moment.
+            </p>
+            <Link
+              href="/matchs"
+              className="press rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-strong"
+            >
+              Pronostiquer un match
+            </Link>
+          </div>
+        ) : (
+          <ul className="space-y-2.5 rounded-xl border border-border bg-surface p-4">
+            {TIERS.map((t, i) => (
+              <li key={t.points} className="flex items-center gap-3">
+                <span className="w-44 shrink-0 truncate text-sm text-muted">
+                  {t.label}
+                </span>
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2">
+                  <div
+                    className={`h-full rounded-full ${t.bar}`}
+                    style={{ width: `${(counts[i] / maxCount) * 100}%` }}
+                  />
+                </div>
+                <span className="w-6 shrink-0 text-right font-mono text-sm font-semibold tabular-nums">
+                  {counts[i]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Scoring reference — tucked behind a small "i" disclosure */}
+      <details className="group rounded-xl border border-border bg-surface">
+        <summary className="flex cursor-pointer list-none items-center gap-2 p-3 text-sm font-medium text-muted transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
+          <InfoIcon className="size-4 shrink-0 text-faint" />
+          Comment les points sont calculés
+          <ChevronLeftIcon className="ml-auto size-4 -rotate-90 text-faint transition-transform group-open:rotate-90" />
+        </summary>
+        <ul className="divide-y divide-border border-t border-border">
           {SCORING_RULES.map((rule) => (
             <li
               key={rule.label}
               className="flex items-center justify-between gap-3 p-3"
             >
-              <div>
+              <div className="min-w-0">
                 <div className="text-sm font-medium">{rule.label}</div>
                 <div className="text-xs text-muted">{rule.example}</div>
               </div>
-              <span className="shrink-0 font-semibold tabular-nums text-accent">
+              <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 font-mono text-sm font-semibold tabular-nums text-accent">
                 {rule.points} pts
               </span>
             </li>
           ))}
         </ul>
-      </div>
+      </details>
 
-      <p className="text-center text-xs text-muted">
-        Statistiques détaillées, badges et boutique cosmétique : phase 2.
-      </p>
-
-      <form action={signOut}>
-        <button
-          type="submit"
-          className="w-full rounded-lg border border-border py-2.5 text-sm font-medium text-muted transition-colors hover:text-danger"
-        >
-          Se déconnecter
-        </button>
-      </form>
+      {/* Account footer */}
+      <footer className="border-t border-border pt-5">
+        <form action={signOut} className="flex justify-center">
+          <button
+            type="submit"
+            className="press inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-faint transition-colors hover:bg-danger/[0.06] hover:text-danger"
+          >
+            <LogoutIcon className="size-4" />
+            Se déconnecter
+          </button>
+        </form>
+        <p className="mt-4 text-center text-xs text-faint">
+          Badges et boutique cosmétique : phase 2.
+        </p>
+      </footer>
     </section>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string | number }) {
+/** Circular progress ring for the réussite rate (single accent stroke). */
+function Ring({ pct }: { pct: number }) {
+  const r = 30;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - Math.min(100, Math.max(0, pct)) / 100);
+  return (
+    <div className="relative grid size-20 shrink-0 place-items-center">
+      <svg viewBox="0 0 80 80" className="size-20 -rotate-90">
+        <circle
+          cx="40"
+          cy="40"
+          r={r}
+          fill="none"
+          stroke="var(--border)"
+          strokeWidth="6"
+        />
+        <circle
+          cx="40"
+          cy="40"
+          r={r}
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+        />
+      </svg>
+      <span className="absolute font-mono text-lg font-bold tabular-nums">
+        {pct}
+        <span className="text-xs font-normal text-faint">%</span>
+      </span>
+    </div>
+  );
+}
+
+function Fact({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div>
+      <div className="font-mono text-lg font-bold tabular-nums">{value}</div>
+      <div className="text-xs text-faint">{label}</div>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  accent = false,
+}: {
+  label: string;
+  value: string | number;
+  accent?: boolean;
+}) {
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
-      <div className="text-2xl font-bold tabular-nums">{value}</div>
-      <div className="text-xs text-muted">{label}</div>
+      <div
+        className={`font-mono text-2xl font-bold tabular-nums ${
+          accent ? "text-accent" : ""
+        }`}
+      >
+        {value}
+      </div>
+      <div className="mt-0.5 text-xs text-faint">{label}</div>
     </div>
   );
 }
