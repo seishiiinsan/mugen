@@ -1,26 +1,63 @@
 @import "tailwindcss";
 
+/* Mugen — premium minimal, light theme, Viva Magenta accent.
+   See design-system/MASTER.md. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --background: #fbfbfc;
+  --surface: #ffffff;
+  --surface-2: #f3f3f5;
+  --border: #eaeaec;
+  --border-strong: #d6d6da;
+  --foreground: #18181b;
+  --muted: #65656d;
+  --faint: #98989f;
+  --accent: #be3455;
+  --accent-strong: #a52c49;
+  --accent-fg: #ffffff;
+  --ring: rgba(190, 52, 85, 0.35);
+  --danger: #dc2626;
+  --success: #16a34a;
+  --gold: #b8860b;
+  --silver: #8a8a93;
+  --bronze: #a9682f;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-fg: var(--accent-fg);
+  --color-ring: var(--ring);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-gold: var(--gold);
+  --color-silver: var(--silver);
+  --color-bronze: var(--bronze);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tap feedback helper used across interactive cards/buttons. */
+@media (prefers-reduced-motion: no-preference) {
+  .press {
+    transition: transform 0.1s ease-out;
+  }
+  .press:active {
+    transform: scale(0.99);
+  }
 }
