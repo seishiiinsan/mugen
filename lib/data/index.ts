@@ -19,6 +19,7 @@ import type {
   BoostType,
   Fixture,
   FixtureStatus,
+  Group,
   LeaderboardEntry,
   Prediction,
   UserProfile,
@@ -467,4 +468,78 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
     monthlyPoints: 0,
     worldRank: null,
   };
+}
+
+// ---------------------------------------------------------------------------
+// GROUPES (ligues privées)
+// ---------------------------------------------------------------------------
+
+interface GroupRow {
+  id: string;
+  name: string;
+  invite_code: string;
+  owner_id: string;
+  member_count: number;
+  created_at: string;
+}
+
+function mapGroupRow(r: GroupRow): Group {
+  return {
+    id: r.id,
+    name: r.name,
+    inviteCode: r.invite_code,
+    ownerId: r.owner_id,
+    memberCount: Number(r.member_count),
+    createdAt: r.created_at,
+  };
+}
+
+/** Groups the current user belongs to (most recent first). */
+export async function getMyGroups(): Promise<Group[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_groups");
+  if (error) {
+    console.error("[getMyGroups]", error);
+    return [];
+  }
+  return ((data as GroupRow[] | null) ?? []).map(mapGroupRow);
+}
+
+/** A single group's metadata, or null if the user isn't a member. */
+export async function getGroup(groupId: string): Promise<Group | null> {
+  const groups = await getMyGroups();
+  return groups.find((g) => g.id === groupId) ?? null;
+}
+
+interface GroupLeaderboardRow {
+  rank: number;
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  points: number;
+  exact_scores: number;
+}
+
+/** Monthly ranking restricted to a group's members (0-point members included). */
+export async function getGroupLeaderboard(
+  groupId: string,
+): Promise<LeaderboardEntry[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("group_leaderboard", {
+    p_group: groupId,
+  });
+  if (error) {
+    console.error("[getGroupLeaderboard]", error);
+    return [];
+  }
+  return ((data as GroupLeaderboardRow[] | null) ?? []).map((r) => ({
+    rank: Number(r.rank),
+    userId: r.user_id,
+    username: r.username,
+    points: Number(r.points),
+    exactScores: Number(r.exact_scores),
+    avatarUrl: r.avatar_url ?? undefined,
+  }));
 }

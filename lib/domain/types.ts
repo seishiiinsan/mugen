@@ -84,3 +84,12 @@ export interface UserProfile {
   monthlyPoints: number;
   worldRank: number | null;
 }
+
+export interface Group {
+  id: string;
+  name: string;
+  inviteCode: string;
+  ownerId: string;
+  memberCount: number;
+  createdAt: string;
+}
