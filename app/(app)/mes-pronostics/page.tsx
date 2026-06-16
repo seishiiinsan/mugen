@@ -42,8 +42,10 @@ export default async function MesPronosticsPage(
           actual: fixture.score,
           boost: p.boost,
         });
-        earned = r.points;
         exact = r.exact;
+        // Prefer the settled DB points (include scorers/markets + floor);
+        // fall back to the base estimate while settling is still pending.
+        earned = p.points ?? r.points;
       }
       return { prediction: p, fixture, earned, exact };
     })

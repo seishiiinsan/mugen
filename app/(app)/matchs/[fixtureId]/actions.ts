@@ -3,7 +3,13 @@
 import { refresh } from "next/cache";
 import { getFixture } from "@/lib/data";
 import { BOOST_TYPES } from "@/lib/domain/boosts";
-import type { BoostType } from "@/lib/domain/types";
+import { MAX_SCORERS } from "@/lib/domain/markets";
+import type {
+  BoostType,
+  BttsPick,
+  OverUnder,
+  ScorerPick,
+} from "@/lib/domain/types";
 import { clampGoals, isPredictionOpen } from "@/lib/domain/predictions";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -38,6 +44,15 @@ export async function submitPrediction(
     : null;
   const home2 = clampGoals(Number(formData.get("home2")));
   const away2 = clampGoals(Number(formData.get("away2")));
+
+  // Side markets.
+  const ouRaw = String(formData.get("ou25") ?? "");
+  const ou25: OverUnder | null =
+    ouRaw === "over" || ouRaw === "under" ? ouRaw : null;
+  const bttsRaw = String(formData.get("btts") ?? "");
+  const btts: BttsPick | null =
+    bttsRaw === "yes" || bttsRaw === "no" ? bttsRaw : null;
+  const scorers = parseScorers(String(formData.get("scorers") ?? "[]"));
 
   const fixture = await getFixture(fixtureId);
   if (!fixture) return { error: "Match introuvable." };
@@ -98,6 +113,9 @@ export async function submitPrediction(
       boost,
       home_goals_2: boost === "double_chance" ? home2 : null,
       away_goals_2: boost === "double_chance" ? away2 : null,
+      scorers,
+      ou_25: ou25,
+      btts,
     },
     { onConflict: "user_id,fixture_id" },
   );
@@ -113,4 +131,27 @@ export async function submitPrediction(
 
   refresh();
   return { ok: true, values: { home, away } };
+}
+
+/** Parse the scorers hidden field: a JSON array of {id, name}, deduped & capped. */
+function parseScorers(raw: string): ScorerPick[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  const out: ScorerPick[] = [];
+  const seen = new Set<number>();
+  for (const item of parsed) {
+    if (!item || typeof item !== "object") continue;
+    const id = Number((item as { id?: unknown }).id);
+    const name = String((item as { name?: unknown }).name ?? "").trim();
+    if (!Number.isInteger(id) || id <= 0 || !name || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, name: name.slice(0, 60) });
+    if (out.length >= MAX_SCORERS) break;
+  }
+  return out;
 }

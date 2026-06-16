@@ -8,6 +8,7 @@ import { bzzoiroGet } from "./client";
 import { isBzzoiroConfigured } from "./env";
 
 export interface LineupPlayer {
+  id: number | null;
   name: string;
   shortName: string;
   position: string;
@@ -84,6 +85,7 @@ export interface MatchExtras {
 // --- Raw shapes (from live responses) ------------------------------------
 
 interface RawPlayer {
+  id?: number | null;
   name: string;
   short_name: string;
   position: string;
@@ -154,6 +156,7 @@ const STAT_LABELS: { key: string; label: string }[] = [
 
 function mapPlayer(p: RawPlayer): LineupPlayer {
   return {
+    id: p.id ?? null,
     name: p.name,
     shortName: p.short_name || p.name,
     position: p.position,
@@ -243,6 +246,33 @@ async function fetchIncidents(id: number): Promise<Incident[]> {
           : (i.card_type ?? "yellow"),
     }))
     .sort((a, b) => a.minute - b.minute || (a.addedTime ?? 0) - (b.addedTime ?? 0));
+}
+
+/**
+ * Player ids that scored a real goal in a match (own goals excluded), for
+ * settling goalscorer predictions. Empty on error or if no scorer ids are
+ * available.
+ */
+export async function fetchScorerPlayerIds(id: number): Promise<number[]> {
+  if (!isBzzoiroConfigured()) return [];
+  try {
+    const raw = await bzzoiroGet<{ incidents?: RawIncident[] }>(
+      `/api/v2/events/${id}/incidents/`,
+      {},
+      60,
+    );
+    const ids = (raw.incidents ?? [])
+      .filter(
+        (i) =>
+          i.type === "goal" &&
+          i.goal_type !== "ownGoal" &&
+          typeof i.player_id === "number",
+      )
+      .map((i) => i.player_id as number);
+    return [...new Set(ids)];
+  } catch {
+    return [];
+  }
 }
 
 async function fetchStandings(

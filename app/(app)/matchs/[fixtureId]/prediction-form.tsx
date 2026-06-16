@@ -3,8 +3,22 @@
 import { useActionState, useState } from "react";
 import { MAX_GOALS } from "@/lib/domain/predictions";
 import { BOOSTS, BOOST_TYPES, type BoostType } from "@/lib/domain/boosts";
+import {
+  BTTS_HIT,
+  MAX_SCORERS,
+  OU_HIT,
+  SCORER_HIT,
+  SCORER_MISS,
+} from "@/lib/domain/markets";
+import type { BttsPick, OverUnder, ScorerPick } from "@/lib/domain/types";
 import { TeamCrest } from "../../_components/team-crest";
 import { submitPrediction, type PredictionFormState } from "./actions";
+
+export interface ScorerOption {
+  id: number;
+  name: string;
+  isHome: boolean;
+}
 
 export function PredictionForm({
   fixtureId,
@@ -15,7 +29,11 @@ export function PredictionForm({
   initial,
   initialBoost,
   initialSecondary,
+  initialScorers,
+  initialOu,
+  initialBtts,
   boostStock,
+  scorerOptions,
   bare = false,
 }: {
   fixtureId: number;
@@ -26,7 +44,12 @@ export function PredictionForm({
   initial: { home: number; away: number } | null;
   initialBoost: BoostType | null;
   initialSecondary: { home: number; away: number } | null;
+  initialScorers: ScorerPick[];
+  initialOu: OverUnder | null;
+  initialBtts: BttsPick | null;
   boostStock: BoostType[];
+  /** Selectable scorers from the lineup; empty when no lineup is published. */
+  scorerOptions: ScorerOption[];
   /** Drop the card chrome when embedded inside another card. */
   bare?: boolean;
 }) {
@@ -43,6 +66,19 @@ export function PredictionForm({
   const [home2, setHome2] = useState(initialSecondary?.home ?? 0);
   const [away2, setAway2] = useState(initialSecondary?.away ?? 0);
 
+  const [scorers, setScorers] = useState<ScorerPick[]>(initialScorers);
+  const [ou, setOu] = useState<OverUnder | null>(initialOu);
+  const [btts, setBtts] = useState<BttsPick | null>(initialBtts);
+
+  function toggleScorer(opt: ScorerOption) {
+    setScorers((prev) => {
+      const exists = prev.some((s) => s.id === opt.id);
+      if (exists) return prev.filter((s) => s.id !== opt.id);
+      if (prev.length >= MAX_SCORERS) return prev;
+      return [...prev, { id: opt.id, name: opt.name }];
+    });
+  }
+
   return (
     <form
       action={action}
@@ -54,6 +90,9 @@ export function PredictionForm({
       <input type="hidden" name="boost" value={boost ?? ""} />
       <input type="hidden" name="home2" value={home2} />
       <input type="hidden" name="away2" value={away2} />
+      <input type="hidden" name="ou25" value={ou ?? ""} />
+      <input type="hidden" name="btts" value={btts ?? ""} />
+      <input type="hidden" name="scorers" value={JSON.stringify(scorers)} />
 
       <div className="flex items-start justify-center gap-4">
         <Stepper
@@ -130,6 +169,82 @@ export function PredictionForm({
         </div>
       )}
 
+      {/* Side markets — Over/Under 2.5 and BTTS */}
+      <div className="mt-5 border-t border-border pt-4">
+        <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-faint">
+          Marchés <span className="normal-case text-faint">(optionnels)</span>
+        </span>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <div className="mb-1.5 flex items-center justify-between text-xs">
+              <span className="text-muted">Total buts (2,5)</span>
+              <span className="text-faint">+{OU_HIT}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <SegButton active={ou === "over"} onClick={() => setOu(ou === "over" ? null : "over")}>
+                Plus de 2,5
+              </SegButton>
+              <SegButton active={ou === "under"} onClick={() => setOu(ou === "under" ? null : "under")}>
+                Moins de 2,5
+              </SegButton>
+            </div>
+          </div>
+          <div>
+            <div className="mb-1.5 flex items-center justify-between text-xs">
+              <span className="text-muted">Les deux marquent</span>
+              <span className="text-faint">+{BTTS_HIT}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <SegButton active={btts === "yes"} onClick={() => setBtts(btts === "yes" ? null : "yes")}>
+                Oui
+              </SegButton>
+              <SegButton active={btts === "no"} onClick={() => setBtts(btts === "no" ? null : "no")}>
+                Non
+              </SegButton>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Goalscorers — from the published lineup */}
+      <div className="mt-5 border-t border-border pt-4">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-xs font-medium uppercase tracking-wide text-faint">
+            Buteurs{" "}
+            <span className="normal-case text-faint">
+              (+{SCORER_HIT} juste, {SCORER_MISS} faux)
+            </span>
+          </span>
+          <span className="text-xs text-faint">
+            {scorers.length}/{MAX_SCORERS}
+          </span>
+        </div>
+
+        {scorerOptions.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border p-3 text-center text-xs text-muted">
+            Compositions pas encore disponibles — buteurs pronostiquables dès
+            leur publication.
+          </p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ScorerColumn
+              team={homeName}
+              options={scorerOptions.filter((o) => o.isHome)}
+              selected={scorers}
+              atMax={scorers.length >= MAX_SCORERS}
+              onToggle={toggleScorer}
+            />
+            <ScorerColumn
+              team={awayName}
+              options={scorerOptions.filter((o) => !o.isHome)}
+              selected={scorers}
+              atMax={scorers.length >= MAX_SCORERS}
+              onToggle={toggleScorer}
+            />
+          </div>
+        )}
+      </div>
+
       {state.error && (
         <p className="mt-4 text-center text-sm text-danger">{state.error}</p>
       )}
@@ -152,6 +267,73 @@ export function PredictionForm({
             : "Confirmer le pronostic"}
       </button>
     </form>
+  );
+}
+
+function SegButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-lg border px-2 py-2 text-xs font-medium transition-colors ${
+        active
+          ? "border-accent bg-accent/10 text-accent"
+          : "border-border text-muted hover:border-border-strong"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ScorerColumn({
+  team,
+  options,
+  selected,
+  atMax,
+  onToggle,
+}: {
+  team: string;
+  options: ScorerOption[];
+  selected: ScorerPick[];
+  atMax: boolean;
+  onToggle: (opt: ScorerOption) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-1.5 truncate text-xs font-medium text-muted">{team}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {options.length === 0 && (
+          <span className="text-xs text-faint">—</span>
+        )}
+        {options.map((opt) => {
+          const active = selected.some((s) => s.id === opt.id);
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              disabled={!active && atMax}
+              onClick={() => onToggle(opt)}
+              className={`rounded-full border px-2.5 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                active
+                  ? "border-accent bg-accent/10 font-medium text-accent"
+                  : "border-border text-muted hover:border-border-strong"
+              }`}
+            >
+              {opt.name}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

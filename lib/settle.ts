@@ -1,8 +1,12 @@
 import "server-only";
 
-import { fetchFixtureById, isSportsApiConfigured } from "@/lib/sports";
-import { scoreBoosted } from "@/lib/domain/boosts";
-import type { BoostType } from "@/lib/domain/types";
+import {
+  fetchFixtureById,
+  fetchScorerIds,
+  isSportsApiConfigured,
+} from "@/lib/sports";
+import { scoreFull } from "@/lib/domain/markets";
+import type { BoostType, BttsPick, OverUnder, ScorerPick } from "@/lib/domain/types";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 
 export interface SettleResult {
@@ -80,9 +84,15 @@ export async function settlePredictions(): Promise<SettleResult> {
     if (fixture.status !== "finished" || !fixture.score) continue;
     fixturesSettled++;
 
+    // Actual goalscorers (for goalscorer markets); empty if unavailable.
+    const scorerIds = await fetchScorerIds(fixtureId);
+    const outcome = { score: fixture.score, scorerIds };
+
     const { data: preds } = await admin
       .from("predictions")
-      .select("id, home_goals, away_goals, boost, home_goals_2, away_goals_2")
+      .select(
+        "id, home_goals, away_goals, boost, home_goals_2, away_goals_2, scorers, ou_25, btts",
+      )
       .eq("fixture_id", fixtureId)
       .is("points", null);
 
@@ -94,9 +104,12 @@ export async function settlePredictions(): Promise<SettleResult> {
           boost: BoostType | null;
           home_goals_2: number | null;
           away_goals_2: number | null;
+          scorers: ScorerPick[] | null;
+          ou_25: OverUnder | null;
+          btts: BttsPick | null;
         }[]
       | null) ?? []) {
-      const { points, basePoints } = scoreBoosted({
+      const { points, basePoints } = scoreFull({
         primary: { home: p.home_goals, away: p.away_goals },
         secondary:
           p.home_goals_2 != null && p.away_goals_2 != null
@@ -104,6 +117,12 @@ export async function settlePredictions(): Promise<SettleResult> {
             : null,
         actual: fixture.score,
         boost: p.boost,
+        picks: {
+          scorers: (p.scorers ?? []).map((s) => s.id),
+          ou25: p.ou_25,
+          btts: p.btts,
+        },
+        outcome,
       });
       await admin
         .from("predictions")
