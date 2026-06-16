@@ -89,8 +89,6 @@ export const MOCK_PREDICTIONS: Prediction[] = [
     boost: null,
     secondary: null,
     scorers: [],
-    ou25: null,
-    btts: null,
   },
   {
     fixtureId: 104,
@@ -102,8 +100,6 @@ export const MOCK_PREDICTIONS: Prediction[] = [
     boost: "double_points",
     secondary: null,
     scorers: [],
-    ou25: null,
-    btts: null,
   },
 ];
 

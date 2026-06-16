@@ -17,12 +17,10 @@ import {
 } from "@/lib/mock/fixtures";
 import type {
   BoostType,
-  BttsPick,
   Fixture,
   FixtureStatus,
   Group,
   LeaderboardEntry,
-  OverUnder,
   Prediction,
   ScorerPick,
   UserProfile,
@@ -48,13 +46,11 @@ interface PredictionRow {
   home_goals_2: number | null;
   away_goals_2: number | null;
   scorers: ScorerPick[] | null;
-  ou_25: OverUnder | null;
-  btts: BttsPick | null;
 }
 
 /** Columns selected for every prediction read. */
 const PREDICTION_COLS =
-  "fixture_id, home_goals, away_goals, points, updated_at, boost, home_goals_2, away_goals_2, scorers, ou_25, btts";
+  "fixture_id, home_goals, away_goals, points, updated_at, boost, home_goals_2, away_goals_2, scorers";
 
 function mapPredictionRow(row: PredictionRow, userId: string): Prediction {
   return {
@@ -70,8 +66,6 @@ function mapPredictionRow(row: PredictionRow, userId: string): Prediction {
         ? { home: row.home_goals_2, away: row.away_goals_2 }
         : null,
     scorers: row.scorers ?? [],
-    ou25: row.ou_25,
-    btts: row.btts,
   };
 }
 

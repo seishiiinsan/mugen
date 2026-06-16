@@ -49,18 +49,15 @@ export interface Score {
 /** The three monthly power-ups a player can attach to a prediction. */
 export type BoostType = "double_points" | "double_chance" | "banco";
 
-/** Over/Under 2.5 total goals. */
-export type OverUnder = "over" | "under";
-/** Both teams to score. */
-export type BttsPick = "yes" | "no";
-
-/** A predicted goalscorer (player id + display name, from the lineup). */
+/** A predicted goalscorer with the role they were picked in. */
 export interface ScorerPick {
   id: number;
   name: string;
+  /** Lineup role at pick time ('G' | 'D' | 'M' | 'F'); drives the hit bonus. */
+  position: string;
 }
 
-/** A user's single prediction for a fixture (exact score + side markets). */
+/** A user's single prediction for a fixture (exact score + goalscorers). */
 export interface Prediction {
   fixtureId: number;
   userId: string;
@@ -74,12 +71,8 @@ export interface Prediction {
   boost: BoostType | null;
   /** Second predicted score — only set for the `double_chance` boost. */
   secondary: Score | null;
-  /** Predicted goalscorers (anytime). +4 each hit, −2 each miss. */
+  /** Predicted goalscorers (anytime). Hit bonus by role, −2 each miss. */
   scorers: ScorerPick[];
-  /** Over/Under 2.5 total goals, or null if not played. */
-  ou25: OverUnder | null;
-  /** Both teams to score, or null if not played. */
-  btts: BttsPick | null;
 }
 
 export interface LeaderboardEntry {

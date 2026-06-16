@@ -5,7 +5,7 @@ import { isPredictionOpen, lockTime } from "@/lib/domain/predictions";
 import { SCORING_RULES } from "@/lib/domain/scoring";
 import { BOOSTS, leaderboardMonth } from "@/lib/domain/boosts";
 import { scoreFull, type FullScore } from "@/lib/domain/markets";
-import type { BoostType, BttsPick, OverUnder, ScorerPick } from "@/lib/domain/types";
+import type { BoostType, ScorerPick } from "@/lib/domain/types";
 import { fetchMatchExtras } from "@/lib/bzzoiro/match-extras";
 import { formatKickoff, formatMatchDay, formatTime } from "@/lib/ui/format";
 import { ChevronLeftIcon, LockIcon } from "../../_components/icons";
@@ -41,12 +41,19 @@ export default async function FixturePage(
   const scorerOptions: ScorerOption[] = [];
   if (extras.lineups) {
     const add = (
-      players: { id: number | null; name: string; shortName: string }[] | undefined,
+      players:
+        | { id: number | null; name: string; shortName: string; position: string }[]
+        | undefined,
       isHome: boolean,
     ) => {
       for (const p of players ?? []) {
         if (p.id != null) {
-          scorerOptions.push({ id: p.id, name: p.shortName || p.name, isHome });
+          scorerOptions.push({
+            id: p.id,
+            name: p.shortName || p.name,
+            position: p.position,
+            isHome,
+          });
         }
       }
     };
@@ -68,11 +75,7 @@ export default async function FixturePage(
           secondary: prediction.secondary,
           actual: fixture.score!,
           boost: prediction.boost,
-          picks: {
-            scorers: prediction.scorers.map((s) => s.id),
-            ou25: prediction.ou25,
-            btts: prediction.btts,
-          },
+          scorers: prediction.scorers,
           outcome: { score: fixture.score!, scorerIds: actualScorerIds },
         })
       : null;
@@ -96,8 +99,6 @@ export default async function FixturePage(
         initialBoost={prediction?.boost ?? null}
         initialSecondary={prediction?.secondary ?? null}
         initialScorers={prediction?.scorers ?? []}
-        initialOu={prediction?.ou25 ?? null}
-        initialBtts={prediction?.btts ?? null}
         boostStock={boostStock.remaining}
         scorerOptions={scorerOptions}
       />
@@ -197,8 +198,6 @@ function ResultCard({
     secondary: { home: number; away: number } | null;
     boost: BoostType | null;
     scorers: ScorerPick[];
-    ou25: OverUnder | null;
-    btts: BttsPick | null;
   } | null;
   actual: { home: number; away: number } | null;
   actualScorerIds: number[];
@@ -216,13 +215,12 @@ function ResultCard({
     );
   }
 
-  const { boost, secondary, scorers, ou25, btts } = prediction;
+  const { boost, secondary, scorers } = prediction;
   const label =
     result != null
       ? SCORING_RULES.find((r) => r.points === result.basePoints)?.label
       : null;
   const scored = new Set(actualScorerIds);
-  const hasMarkets = scorers.length > 0 || ou25 != null || btts != null;
 
   return (
     <div className="space-y-3 rounded-xl border border-border bg-surface p-5">
@@ -251,55 +249,29 @@ function ResultCard({
         </div>
       )}
 
-      {/* Markets recap */}
-      {hasMarkets && (
-        <div className="space-y-1.5 border-t border-border pt-3 text-xs">
-          {scorers.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-faint">Buteurs</span>
-              {scorers.map((s) => {
-                const hit = settled && scored.has(s.id);
-                const miss = settled && !scored.has(s.id);
-                return (
-                  <span
-                    key={s.id}
-                    className={`rounded-full border px-2 py-0.5 ${
-                      hit
-                        ? "border-success/40 bg-success/10 text-success"
-                        : miss
-                          ? "border-danger/30 bg-danger/10 text-danger line-through"
-                          : "border-border text-muted"
-                    }`}
-                  >
-                    {s.name}
-                    {hit ? " ✓" : miss ? " ✗" : ""}
-                  </span>
-                );
-              })}
-            </div>
-          )}
-          {ou25 != null && (
-            <MarketLine
-              label={ou25 === "over" ? "Plus de 2,5 buts" : "Moins de 2,5 buts"}
-              settled={settled}
-              hit={
-                actual != null &&
-                ((ou25 === "over" && actual.home + actual.away > 2.5) ||
-                  (ou25 === "under" && actual.home + actual.away < 2.5))
-              }
-            />
-          )}
-          {btts != null && (
-            <MarketLine
-              label={btts === "yes" ? "Les deux marquent" : "Pas les deux"}
-              settled={settled}
-              hit={
-                actual != null &&
-                ((btts === "yes" && actual.home > 0 && actual.away > 0) ||
-                  (btts === "no" && !(actual.home > 0 && actual.away > 0)))
-              }
-            />
-          )}
+      {/* Goalscorers recap */}
+      {scorers.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-border pt-3 text-xs">
+          <span className="text-faint">Buteurs</span>
+          {scorers.map((s) => {
+            const hit = settled && scored.has(s.id);
+            const miss = settled && !scored.has(s.id);
+            return (
+              <span
+                key={s.id}
+                className={`rounded-full border px-2 py-0.5 ${
+                  hit
+                    ? "border-success/40 bg-success/10 text-success"
+                    : miss
+                      ? "border-danger/30 bg-danger/10 text-danger line-through"
+                      : "border-border text-muted"
+                }`}
+              >
+                {s.name}
+                {hit ? " ✓" : miss ? " ✗" : ""}
+              </span>
+            );
+          })}
         </div>
       )}
 
@@ -337,23 +309,3 @@ function ResultCard({
   );
 }
 
-function MarketLine({
-  label,
-  settled,
-  hit,
-}: {
-  label: string;
-  settled: boolean;
-  hit: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-muted">{label}</span>
-      {settled && (
-        <span className={hit ? "text-success" : "text-danger"}>
-          {hit ? "✓" : "✗"}
-        </span>
-      )}
-    </div>
-  );
-}

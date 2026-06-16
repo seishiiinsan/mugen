@@ -6,7 +6,7 @@ import {
   isSportsApiConfigured,
 } from "@/lib/sports";
 import { scoreFull } from "@/lib/domain/markets";
-import type { BoostType, BttsPick, OverUnder, ScorerPick } from "@/lib/domain/types";
+import type { BoostType, ScorerPick } from "@/lib/domain/types";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 
 export interface SettleResult {
@@ -91,7 +91,7 @@ export async function settlePredictions(): Promise<SettleResult> {
     const { data: preds } = await admin
       .from("predictions")
       .select(
-        "id, home_goals, away_goals, boost, home_goals_2, away_goals_2, scorers, ou_25, btts",
+        "id, home_goals, away_goals, boost, home_goals_2, away_goals_2, scorers",
       )
       .eq("fixture_id", fixtureId)
       .is("points", null);
@@ -105,8 +105,6 @@ export async function settlePredictions(): Promise<SettleResult> {
           home_goals_2: number | null;
           away_goals_2: number | null;
           scorers: ScorerPick[] | null;
-          ou_25: OverUnder | null;
-          btts: BttsPick | null;
         }[]
       | null) ?? []) {
       const { points, basePoints } = scoreFull({
@@ -117,11 +115,7 @@ export async function settlePredictions(): Promise<SettleResult> {
             : null,
         actual: fixture.score,
         boost: p.boost,
-        picks: {
-          scorers: (p.scorers ?? []).map((s) => s.id),
-          ou25: p.ou_25,
-          btts: p.btts,
-        },
+        scorers: p.scorers ?? [],
         outcome,
       });
       await admin

@@ -4,12 +4,7 @@ import { refresh } from "next/cache";
 import { getFixture } from "@/lib/data";
 import { BOOST_TYPES } from "@/lib/domain/boosts";
 import { MAX_SCORERS } from "@/lib/domain/markets";
-import type {
-  BoostType,
-  BttsPick,
-  OverUnder,
-  ScorerPick,
-} from "@/lib/domain/types";
+import type { BoostType, ScorerPick } from "@/lib/domain/types";
 import { clampGoals, isPredictionOpen } from "@/lib/domain/predictions";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -45,13 +40,7 @@ export async function submitPrediction(
   const home2 = clampGoals(Number(formData.get("home2")));
   const away2 = clampGoals(Number(formData.get("away2")));
 
-  // Side markets.
-  const ouRaw = String(formData.get("ou25") ?? "");
-  const ou25: OverUnder | null =
-    ouRaw === "over" || ouRaw === "under" ? ouRaw : null;
-  const bttsRaw = String(formData.get("btts") ?? "");
-  const btts: BttsPick | null =
-    bttsRaw === "yes" || bttsRaw === "no" ? bttsRaw : null;
+  // Goalscorers.
   const scorers = parseScorers(String(formData.get("scorers") ?? "[]"));
 
   const fixture = await getFixture(fixtureId);
@@ -114,8 +103,6 @@ export async function submitPrediction(
       home_goals_2: boost === "double_chance" ? home2 : null,
       away_goals_2: boost === "double_chance" ? away2 : null,
       scorers,
-      ou_25: ou25,
-      btts,
     },
     { onConflict: "user_id,fixture_id" },
   );
@@ -133,7 +120,7 @@ export async function submitPrediction(
   return { ok: true, values: { home, away } };
 }
 
-/** Parse the scorers hidden field: a JSON array of {id, name}, deduped & capped. */
+/** Parse the scorers hidden field: a JSON array of {id, name, position}. */
 function parseScorers(raw: string): ScorerPick[] {
   let parsed: unknown;
   try {
@@ -148,9 +135,12 @@ function parseScorers(raw: string): ScorerPick[] {
     if (!item || typeof item !== "object") continue;
     const id = Number((item as { id?: unknown }).id);
     const name = String((item as { name?: unknown }).name ?? "").trim();
+    const position = String((item as { position?: unknown }).position ?? "")
+      .trim()
+      .slice(0, 4);
     if (!Number.isInteger(id) || id <= 0 || !name || seen.has(id)) continue;
     seen.add(id);
-    out.push({ id, name: name.slice(0, 60) });
+    out.push({ id, name: name.slice(0, 60), position });
     if (out.length >= MAX_SCORERS) break;
   }
   return out;

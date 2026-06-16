@@ -4,19 +4,18 @@ import { useActionState, useState } from "react";
 import { MAX_GOALS } from "@/lib/domain/predictions";
 import { BOOSTS, BOOST_TYPES, type BoostType } from "@/lib/domain/boosts";
 import {
-  BTTS_HIT,
   MAX_SCORERS,
-  OU_HIT,
-  SCORER_HIT,
   SCORER_MISS,
+  scorerHitPoints,
 } from "@/lib/domain/markets";
-import type { BttsPick, OverUnder, ScorerPick } from "@/lib/domain/types";
+import type { ScorerPick } from "@/lib/domain/types";
 import { TeamCrest } from "../../_components/team-crest";
 import { submitPrediction, type PredictionFormState } from "./actions";
 
 export interface ScorerOption {
   id: number;
   name: string;
+  position: string;
   isHome: boolean;
 }
 
@@ -30,8 +29,6 @@ export function PredictionForm({
   initialBoost,
   initialSecondary,
   initialScorers,
-  initialOu,
-  initialBtts,
   boostStock,
   scorerOptions,
   bare = false,
@@ -45,8 +42,6 @@ export function PredictionForm({
   initialBoost: BoostType | null;
   initialSecondary: { home: number; away: number } | null;
   initialScorers: ScorerPick[];
-  initialOu: OverUnder | null;
-  initialBtts: BttsPick | null;
   boostStock: BoostType[];
   /** Selectable scorers from the lineup; empty when no lineup is published. */
   scorerOptions: ScorerOption[];
@@ -67,15 +62,13 @@ export function PredictionForm({
   const [away2, setAway2] = useState(initialSecondary?.away ?? 0);
 
   const [scorers, setScorers] = useState<ScorerPick[]>(initialScorers);
-  const [ou, setOu] = useState<OverUnder | null>(initialOu);
-  const [btts, setBtts] = useState<BttsPick | null>(initialBtts);
 
   function toggleScorer(opt: ScorerOption) {
     setScorers((prev) => {
       const exists = prev.some((s) => s.id === opt.id);
       if (exists) return prev.filter((s) => s.id !== opt.id);
       if (prev.length >= MAX_SCORERS) return prev;
-      return [...prev, { id: opt.id, name: opt.name }];
+      return [...prev, { id: opt.id, name: opt.name, position: opt.position }];
     });
   }
 
@@ -90,8 +83,6 @@ export function PredictionForm({
       <input type="hidden" name="boost" value={boost ?? ""} />
       <input type="hidden" name="home2" value={home2} />
       <input type="hidden" name="away2" value={away2} />
-      <input type="hidden" name="ou25" value={ou ?? ""} />
-      <input type="hidden" name="btts" value={btts ?? ""} />
       <input type="hidden" name="scorers" value={JSON.stringify(scorers)} />
 
       <div className="flex items-start justify-center gap-4">
@@ -169,50 +160,13 @@ export function PredictionForm({
         </div>
       )}
 
-      {/* Side markets — Over/Under 2.5 and BTTS */}
-      <div className="mt-5 border-t border-border pt-4">
-        <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-faint">
-          Marchés <span className="normal-case text-faint">(optionnels)</span>
-        </span>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <div className="mb-1.5 flex items-center justify-between text-xs">
-              <span className="text-muted">Total buts (2,5)</span>
-              <span className="text-faint">+{OU_HIT}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <SegButton active={ou === "over"} onClick={() => setOu(ou === "over" ? null : "over")}>
-                Plus de 2,5
-              </SegButton>
-              <SegButton active={ou === "under"} onClick={() => setOu(ou === "under" ? null : "under")}>
-                Moins de 2,5
-              </SegButton>
-            </div>
-          </div>
-          <div>
-            <div className="mb-1.5 flex items-center justify-between text-xs">
-              <span className="text-muted">Les deux marquent</span>
-              <span className="text-faint">+{BTTS_HIT}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <SegButton active={btts === "yes"} onClick={() => setBtts(btts === "yes" ? null : "yes")}>
-                Oui
-              </SegButton>
-              <SegButton active={btts === "no"} onClick={() => setBtts(btts === "no" ? null : "no")}>
-                Non
-              </SegButton>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Goalscorers — from the published lineup */}
       <div className="mt-5 border-t border-border pt-4">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-xs font-medium uppercase tracking-wide text-faint">
             Buteurs{" "}
             <span className="normal-case text-faint">
-              (+{SCORER_HIT} juste, {SCORER_MISS} faux)
+              (selon le poste, {SCORER_MISS} si faux)
             </span>
           </span>
           <span className="text-xs text-faint">
@@ -270,30 +224,6 @@ export function PredictionForm({
   );
 }
 
-function SegButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-lg border px-2 py-2 text-xs font-medium transition-colors ${
-        active
-          ? "border-accent bg-accent/10 text-accent"
-          : "border-border text-muted hover:border-border-strong"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
 function ScorerColumn({
   team,
   options,
@@ -322,13 +252,17 @@ function ScorerColumn({
               type="button"
               disabled={!active && atMax}
               onClick={() => onToggle(opt)}
-              className={`rounded-full border px-2.5 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+              title={`${opt.name} · +${scorerHitPoints(opt.position)} si buteur`}
+              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                 active
                   ? "border-accent bg-accent/10 font-medium text-accent"
                   : "border-border text-muted hover:border-border-strong"
               }`}
             >
               {opt.name}
+              <span className="text-[10px] text-faint">
+                +{scorerHitPoints(opt.position)}
+              </span>
             </button>
           );
         })}
