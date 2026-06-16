@@ -29,6 +29,7 @@ import { activeLeaderboardMonth, BOOST_TYPES } from "@/lib/domain/boosts";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
+import { ensureProfile } from "@/lib/supabase/ensure-profile";
 import {
   fetchFixtureById,
   fetchFixturesByRange,
@@ -463,11 +464,24 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: profile } = await supabase
+  let { data: profile } = await supabase
     .from("profiles")
     .select("username, avatar_url, created_at")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
+
+  // Self-heal: if the profile row is gone but the auth account remains (e.g.
+  // it was deleted directly in the DB while the session stayed valid), the
+  // INSERT trigger never re-fires. Recreate it so the user isn't stuck as a
+  // nameless "Joueur" who can't predict (predictions FK → profiles).
+  if (!profile) {
+    await ensureProfile(supabase, user);
+    ({ data: profile } = await supabase
+      .from("profiles")
+      .select("username, avatar_url, created_at")
+      .eq("id", user.id)
+      .maybeSingle());
+  }
 
   return {
     id: user.id,

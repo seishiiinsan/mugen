@@ -16,6 +16,7 @@ import {
   leaderboardMonth,
   scoreBoosted,
 } from "@/lib/domain/boosts";
+import { SCORER_HIT_BY_ROLE, SCORER_MISS } from "@/lib/domain/markets";
 import { signOut } from "@/app/login/actions";
 import {
   ChevronLeftIcon,
@@ -32,6 +33,15 @@ const TIERS: { points: number; label: string; bar: string }[] = [
   { points: 3, label: "Nul exact", bar: "bg-accent/40" },
   { points: 2, label: "Bon vainqueur, écart éloigné", bar: "bg-accent/30" },
   { points: 0, label: "Manqué", bar: "bg-border-strong" },
+];
+
+/** Goalscorer barème — more points the rarer the role, −2 if wrong. */
+const SCORER_RULES: { label: string; points: number }[] = [
+  { label: "Buteur — gardien", points: SCORER_HIT_BY_ROLE.G },
+  { label: "Buteur — défenseur", points: SCORER_HIT_BY_ROLE.D },
+  { label: "Buteur — milieu", points: SCORER_HIT_BY_ROLE.M },
+  { label: "Buteur — attaquant", points: SCORER_HIT_BY_ROLE.F },
+  { label: "Buteur manqué", points: SCORER_MISS },
 ];
 
 function rankMedal(rank: number | null) {
@@ -286,22 +296,58 @@ export default async function ProfilPage() {
           Comment les points sont calculés
           <ChevronLeftIcon className="ml-auto size-4 -rotate-90 text-faint transition-transform group-open:rotate-90" />
         </summary>
-        <ul className="divide-y divide-border border-t border-border">
-          {SCORING_RULES.map((rule) => (
-            <li
-              key={rule.label}
-              className="flex items-center justify-between gap-3 p-3"
-            >
-              <div className="min-w-0">
-                <div className="text-sm font-medium">{rule.label}</div>
-                <div className="text-xs text-muted">{rule.example}</div>
-              </div>
-              <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 font-mono text-sm font-semibold tabular-nums text-accent">
-                {rule.points} pts
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className="border-t border-border">
+          <p className="px-3 pt-3 text-xs font-medium uppercase tracking-wide text-faint">
+            Score
+          </p>
+          <ul className="mt-1 divide-y divide-border">
+            {SCORING_RULES.map((rule) => (
+              <li
+                key={rule.label}
+                className="flex items-center justify-between gap-3 p-3"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">{rule.label}</div>
+                  <div className="text-xs text-muted">{rule.example}</div>
+                </div>
+                <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 font-mono text-sm font-semibold tabular-nums text-accent">
+                  {rule.points} pts
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <p className="px-3 pt-4 text-xs font-medium uppercase tracking-wide text-faint">
+            Buteurs <span className="normal-case text-faint">(jusqu&apos;à 5)</span>
+          </p>
+          <ul className="mt-1 divide-y divide-border">
+            {SCORER_RULES.map((rule) => {
+              const negative = rule.points < 0;
+              return (
+                <li
+                  key={rule.label}
+                  className="flex items-center justify-between gap-3 p-3"
+                >
+                  <div className="text-sm font-medium">{rule.label}</div>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 font-mono text-sm font-semibold tabular-nums ${
+                      negative
+                        ? "bg-danger/10 text-danger"
+                        : "bg-accent/10 text-accent"
+                    }`}
+                  >
+                    {rule.points > 0 ? "+" : ""}
+                    {rule.points} pts
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="px-3 py-3 text-xs text-faint">
+            Les boosts s&apos;appliquent au score ; les buteurs s&apos;ajoutent
+            ensuite, sans jamais faire descendre un match sous 0 point.
+          </p>
+        </div>
       </details>
 
       {/* Account footer */}
