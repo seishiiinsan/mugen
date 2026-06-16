@@ -19,6 +19,19 @@ const item: Variants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: EASE } },
 };
 
+const LEAGUES = [
+  "Ligue 1",
+  "Premier League",
+  "La Liga",
+  "Serie A",
+  "Bundesliga",
+  "Champions League",
+  "Eredivisie",
+  "Primeira Liga",
+  "Liga MX",
+  "Coupe du monde",
+];
+
 export function Hero() {
   const root = useRef<HTMLDivElement>(null);
   const counter = useRef<HTMLSpanElement>(null);
@@ -79,7 +92,7 @@ export function Hero() {
   return (
     <section
       ref={root}
-      className="relative overflow-hidden px-6 pb-20 pt-32 sm:pt-40"
+      className="relative overflow-hidden px-6 pb-12 pt-32 sm:pt-40"
     >
       {/* Blurred pitch backdrop + light accent veil */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -88,6 +101,15 @@ export function Hero() {
         alt=""
         aria-hidden
         className="hero-bg pointer-events-none absolute inset-x-0 -top-10 h-[120%] w-full scale-110 object-cover opacity-60 blur-md"
+      />
+      {/* Drifting aurora glow — magenta accent, very soft */}
+      <div
+        aria-hidden
+        className="aurora pointer-events-none absolute -top-32 left-1/2 z-0 h-[480px] w-[820px] -translate-x-1/2 rounded-full opacity-80 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(40% 50% at 30% 40%, rgba(190,52,85,0.35), transparent 70%), radial-gradient(45% 55% at 75% 60%, rgba(120,80,220,0.20), transparent 70%)",
+        }}
       />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/85 via-background/92 to-background" />
 
@@ -98,7 +120,10 @@ export function Hero() {
             variants={item}
             className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted"
           >
-            <span className="size-1.5 rounded-full bg-accent" />
+            <span className="relative flex size-1.5">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-accent" />
+            </span>
             Classement mondial · saison ouverte
           </motion.span>
 
@@ -122,9 +147,14 @@ export function Hero() {
           <motion.div variants={item} className="mt-8 flex flex-wrap gap-3">
             <Link
               href="/login"
-              className="press rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-strong"
+              className="press group relative overflow-hidden rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-strong"
             >
-              Créer mon compte
+              {/* Sheen sweep on hover */}
+              <span
+                aria-hidden
+                className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full"
+              />
+              <span className="relative">Créer mon compte</span>
             </Link>
             <Link
               href="/matchs"
@@ -138,7 +168,7 @@ export function Hero() {
         {/* Visual */}
         <div className="relative mx-auto h-80 w-full max-w-sm">
           {/* Prediction card */}
-          <div className="absolute left-1/2 top-1/2 w-72 -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-surface p-5">
+          <div className="absolute left-1/2 top-1/2 w-72 -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-surface p-5 shadow-[0_24px_60px_-30px_rgba(190,52,85,0.5)]">
             <div className="text-xs font-medium uppercase tracking-wide text-faint">
               Ligue 1 · ce soir
             </div>
@@ -172,6 +202,20 @@ export function Hero() {
           <div className="hero-chip absolute bottom-3 right-0 rounded-full border border-border bg-surface px-3 py-1.5 text-sm font-semibold text-accent">
             +6 pts
           </div>
+        </div>
+      </div>
+
+      {/* Championship marquee */}
+      <div className="marquee relative mx-auto mt-16 w-full max-w-5xl overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
+        <div className="marquee-track flex w-max items-center gap-3">
+          {[...LEAGUES, ...LEAGUES].map((name, i) => (
+            <span
+              key={`${name}-${i}`}
+              className="shrink-0 rounded-full border border-border bg-surface/60 px-4 py-1.5 text-xs font-medium text-muted backdrop-blur"
+            >
+              {name}
+            </span>
+          ))}
         </div>
       </div>
     </section>

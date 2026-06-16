@@ -9,7 +9,6 @@ import {
   ShopIcon,
 } from "@/app/(app)/_components/icons";
 import { BOOSTS, BOOST_TYPES } from "@/lib/domain/boosts";
-import { Nav } from "./_landing/nav";
 import { Hero } from "./_landing/hero";
 import { Reveal, RevealGroup, RevealItem, ScoreBar } from "./_landing/reveal";
 
@@ -153,8 +152,7 @@ function barFor(points: number): string {
 
 export default function Home() {
   return (
-    <div className="flex flex-1 flex-col">
-      <Nav />
+    <>
       <Hero />
 
       {/* How it works */}
@@ -487,36 +485,22 @@ export default function Home() {
             Crée ton compte en quelques secondes et place ton premier pronostic
             dès ce soir.
           </p>
-          <div className="mt-8 flex justify-center">
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               href="/login"
               className="press rounded-lg bg-accent px-8 py-3.5 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-strong"
             >
               Rejoindre la partie
             </Link>
+            <Link
+              href="/wiki"
+              className="press rounded-lg border border-border bg-surface px-8 py-3.5 text-sm font-semibold transition-colors hover:border-border-strong"
+            >
+              Lire le wiki
+            </Link>
           </div>
         </Reveal>
       </Band>
-
-      <footer className="border-t border-border">
-        <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-between gap-4 px-6 py-8 text-sm text-muted sm:flex-row">
-          <span className="font-bold tracking-tight text-foreground">Mugen</span>
-          <nav className="flex items-center gap-5">
-            <Link href="/matchs" className="hover:text-foreground">
-              Matchs
-            </Link>
-            <Link href="/classement" className="hover:text-foreground">
-              Classement
-            </Link>
-            <Link href="/login" className="hover:text-foreground">
-              Connexion
-            </Link>
-          </nav>
-          <span className="text-xs text-faint">
-            Pronostics football · {new Date().getFullYear()}
-          </span>
-        </div>
-      </footer>
-    </div>
+    </>
   );
 }
