@@ -6,16 +6,9 @@ import {
   getShopItems,
 } from "@/lib/data";
 import { DAILY_BONUS } from "@/lib/domain/economy";
-import type { ShopItem } from "@/lib/domain/types";
 import { CoinIcon, ShopIcon } from "../_components/icons";
 import { DailyBonus } from "./_components/daily-bonus";
-import { ShopItemCard } from "./_components/shop-item-card";
-
-const SECTIONS: { kind: ShopItem["kind"]; label: string }[] = [
-  { kind: "frame", label: "Cadres d'avatar" },
-  { kind: "color", label: "Couleurs de pseudo" },
-  { kind: "title", label: "Titres" },
-];
+import { ShopTabs } from "./_components/shop-tabs";
 
 export default async function BoutiquePage() {
   const [me, items, claimable, granted] = await Promise.all([
@@ -25,6 +18,27 @@ export default async function BoutiquePage() {
     getMyGrantedItems(),
   ]);
   if (!me) redirect("/login");
+
+  const tabs = [
+    {
+      id: "frame",
+      label: "Cadres",
+      items: items.filter((i) => i.kind === "frame"),
+    },
+    {
+      id: "color",
+      label: "Couleurs",
+      items: items.filter((i) => i.kind === "color"),
+    },
+    {
+      id: "title",
+      label: "Titres",
+      items: items.filter((i) => i.kind === "title"),
+    },
+    ...(granted.length > 0
+      ? [{ id: "granted", label: "Reçus", items: granted }]
+      : []),
+  ];
 
   return (
     <section>
@@ -50,46 +64,7 @@ export default async function BoutiquePage() {
         <DailyBonus claimable={claimable} amount={DAILY_BONUS} />
       </div>
 
-      {items.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">
-          Catalogue indisponible.
-        </p>
-      ) : (
-        <div className="space-y-6">
-          {SECTIONS.map(({ kind, label }) => {
-            const group = items.filter((i) => i.kind === kind);
-            if (group.length === 0) return null;
-            return (
-              <div key={kind}>
-                <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-faint">
-                  {label}
-                </h2>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {group.map((item) => (
-                    <ShopItemCard key={item.key} item={item} balance={me.coins} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {granted.length > 0 && (
-        <div className="mt-6">
-          <h2 className="mb-1 text-xs font-medium uppercase tracking-wide text-faint">
-            Objets reçus
-          </h2>
-          <p className="mb-2 text-xs text-faint">
-            Récompenses spéciales — non vendables, à toi de les équiper.
-          </p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {granted.map((item) => (
-              <ShopItemCard key={item.key} item={item} balance={me.coins} />
-            ))}
-          </div>
-        </div>
-      )}
+      <ShopTabs tabs={tabs} balance={me.coins} />
     </section>
   );
 }
