@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { ensureProfile } from "@/lib/supabase/ensure-profile";
 
 export interface AuthState {
   error?: string;
@@ -35,8 +36,14 @@ export async function signInWithPassword(
   const redirectTo = safeRedirectPath(formData.get("redirect"));
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
   if (error) return { error: "E-mail ou mot de passe incorrect." };
+
+  // Recreate a missing profile (e.g. deleted while the auth account remained).
+  if (data.user) await ensureProfile(supabase, data.user);
 
   redirect(redirectTo);
 }

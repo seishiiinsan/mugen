@@ -106,6 +106,26 @@ export async function fetchFixturesByDate(date = todayUtc()): Promise<Fixture[]>
   return events.map((e) => mapEvent(e, names));
 }
 
+/** Fixtures over an inclusive date range (YYYY-MM-DD), paginated. */
+export async function fetchFixturesByRange(
+  from: string,
+  to: string,
+): Promise<Fixture[]> {
+  const names = await leagueNames();
+  const out: Fixture[] = [];
+  const LIMIT = 200;
+  for (let offset = 0; offset < 1000; offset += LIMIT) {
+    const events = await bzzoiroList<RawEvent>(
+      "/api/v2/events/",
+      { date_from: from, date_to: to, limit: LIMIT, offset },
+      300,
+    );
+    for (const e of events) out.push(mapEvent(e, names));
+    if (events.length < LIMIT) break;
+  }
+  return out;
+}
+
 /** A single fixture by event id (short cache for live freshness). */
 export async function fetchFixtureById(id: number): Promise<Fixture | null> {
   const [event, names] = await Promise.all([

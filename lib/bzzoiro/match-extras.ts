@@ -42,10 +42,43 @@ export interface HeadToHead {
   awayWins: number;
 }
 
+export interface Incident {
+  kind: "goal" | "card";
+  minute: number;
+  addedTime: number | null;
+  player: string;
+  /** Resolvable via /api/v2/players/{id}/ (incident id space). */
+  playerId: number | null;
+  isHome: boolean;
+  /** Goal: assist or special type. Card: "yellow" | "red". */
+  detail: string;
+}
+
+export interface StandingRow {
+  position: number;
+  team: string;
+  teamId: number;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  gd: number;
+  pts: number;
+  /** True for one of the two teams in the current match. */
+  highlight: boolean;
+}
+
+export interface StandingsGroup {
+  name: string | null;
+  rows: StandingRow[];
+}
+
 export interface MatchExtras {
   lineups: Lineups | null;
   stats: StatPair[];
   h2h: HeadToHead | null;
+  incidents: Incident[];
+  standings: StandingsGroup[] | null;
 }
 
 // --- Raw shapes (from live responses) ------------------------------------
@@ -79,9 +112,37 @@ interface RawH2H {
   draws?: number;
   away_wins?: number;
 }
+interface RawIncident {
+  type: string;
+  minute: number;
+  added_time?: number | null;
+  player?: string;
+  player_id?: number | null;
+  assist?: string | null;
+  is_home?: boolean;
+  card_type?: string;
+  goal_type?: string;
+}
+interface RawStandingRow {
+  position: number;
+  team_id: number;
+  team_name: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  gd: number;
+  pts: number;
+}
+interface RawStandings {
+  groups?: Record<string, RawStandingRow[]> | null;
+  standings?: RawStandingRow[] | null;
+}
 
 // Curated, always-scalar stats worth showing, in display order.
 const STAT_LABELS: { key: string; label: string }[] = [
+  { key: "ball_possession", label: "Possession (%)" },
+  { key: "expected_goals", label: "Buts attendus (xG)" },
   { key: "total_shots", label: "Tirs" },
   { key: "shots_on_target", label: "Tirs cadrés" },
   { key: "big_chances", label: "Grosses occasions" },
@@ -157,15 +218,98 @@ async function fetchH2H(id: number): Promise<HeadToHead | null> {
   };
 }
 
-/** Fetch all match extras in parallel; each degrades independently. */
-export async function fetchMatchExtras(id: number): Promise<MatchExtras> {
-  if (!isBzzoiroConfigured()) {
-    return { lineups: null, stats: [], h2h: null };
+async function fetchIncidents(id: number): Promise<Incident[]> {
+  const raw = await bzzoiroGet<{ incidents?: RawIncident[] }>(
+    `/api/v2/events/${id}/incidents/`,
+    {},
+    60,
+  );
+  return (raw.incidents ?? [])
+    .filter((i) => i.type === "goal" || i.type === "card")
+    .map((i) => ({
+      kind: i.type === "goal" ? ("goal" as const) : ("card" as const),
+      minute: i.minute,
+      addedTime: i.added_time ?? null,
+      player: i.player ?? "",
+      playerId: i.player_id ?? null,
+      isHome: Boolean(i.is_home),
+      detail:
+        i.type === "goal"
+          ? i.assist
+            ? `passe ${i.assist}`
+            : i.goal_type && i.goal_type !== "regular"
+              ? i.goal_type
+              : ""
+          : (i.card_type ?? "yellow"),
+    }))
+    .sort((a, b) => a.minute - b.minute || (a.addedTime ?? 0) - (b.addedTime ?? 0));
+}
+
+async function fetchStandings(
+  leagueId: number,
+  homeTeamId?: number,
+  awayTeamId?: number,
+): Promise<StandingsGroup[] | null> {
+  const raw = await bzzoiroGet<RawStandings>(
+    `/api/v2/leagues/${leagueId}/standings/`,
+    {},
+    3600,
+  );
+  const highlightIds = new Set(
+    [homeTeamId, awayTeamId].filter((x): x is number => typeof x === "number"),
+  );
+  const mapRow = (r: RawStandingRow): StandingRow => ({
+    position: r.position,
+    team: r.team_name,
+    teamId: r.team_id,
+    played: r.played,
+    won: r.won,
+    drawn: r.drawn,
+    lost: r.lost,
+    gd: r.gd,
+    pts: r.pts,
+    highlight: highlightIds.has(r.team_id),
+  });
+
+  let groups: StandingsGroup[];
+  if (raw.groups) {
+    groups = Object.entries(raw.groups).map(([name, rows]) => ({
+      name,
+      rows: rows.map(mapRow),
+    }));
+    // Prefer the group(s) featuring one of the two teams.
+    const relevant = groups.filter((g) => g.rows.some((r) => r.highlight));
+    if (relevant.length) groups = relevant;
+  } else if (raw.standings) {
+    groups = [{ name: null, rows: raw.standings.map(mapRow) }];
+  } else {
+    return null;
   }
-  const [lineups, stats, h2h] = await Promise.all([
+  return groups.length ? groups : null;
+}
+
+/** Fetch all match extras in parallel; each degrades independently. */
+export async function fetchMatchExtras(
+  id: number,
+  opts: { leagueId?: number; homeTeamId?: number; awayTeamId?: number } = {},
+): Promise<MatchExtras> {
+  if (!isBzzoiroConfigured()) {
+    return { lineups: null, stats: [], h2h: null, incidents: [], standings: null };
+  }
+  const [lineups, stats, h2h, incidents, standings] = await Promise.all([
     safe(() => fetchLineups(id)),
     safe(() => fetchStats(id)),
     safe(() => fetchH2H(id)),
+    safe(() => fetchIncidents(id)),
+    opts.leagueId
+      ? safe(() => fetchStandings(opts.leagueId!, opts.homeTeamId, opts.awayTeamId))
+      : Promise.resolve(null),
   ]);
-  return { lineups, stats: stats ?? [], h2h };
+  return {
+    lineups,
+    stats: stats ?? [],
+    h2h,
+    incidents: incidents ?? [],
+    standings: standings ?? null,
+  };
 }

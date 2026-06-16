@@ -26,9 +26,10 @@ import type {
 import { BOOST_TYPES, leaderboardMonth } from "@/lib/domain/boosts";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 import {
   fetchFixtureById,
-  fetchFixturesByDate,
+  fetchFixturesByRange,
   isSportsApiConfigured,
 } from "@/lib/sports";
 
@@ -137,23 +138,47 @@ async function getCachedFixtures(): Promise<Fixture[]> {
   return ((data as FixtureRow[] | null) ?? []).map(mapFixtureRow);
 }
 
+/**
+ * Forthcoming matches of the current month: every upcoming (or live) fixture
+ * whose kickoff falls within this calendar month (UTC, matching the monthly
+ * leaderboard). Finished matches are intentionally excluded — a user revisits
+ * those via "Mes pronostics".
+ */
 export async function getFixtures(): Promise<Fixture[]> {
+  const now = new Date();
+  const from = now.toISOString().slice(0, 10);
+  const lastDay = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0),
+  );
+  const to = lastDay.toISOString().slice(0, 10);
+  const startNextMonthMs = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth() + 1,
+    1,
+  );
+
+  const forthcoming = (f: Fixture): boolean =>
+    (f.status === "upcoming" || f.status === "live") &&
+    new Date(f.kickoff).getTime() < startNextMonthMs;
+
   if (isSportsApiConfigured()) {
     try {
-      return sortFixtures(await fetchFixturesByDate());
+      const fixtures = await fetchFixturesByRange(from, to);
+      return sortFixtures(fixtures.filter(forthcoming));
     } catch (err) {
-      // Rate limit / outage: degrade gracefully to the cached fixtures rather
-      // than crashing the page.
+      // Rate limit / outage: degrade gracefully to the cached fixtures.
       console.error(
-        "[getFixtures] API-Football unavailable, serving cached fixtures:",
+        "[getFixtures] sports API unavailable, serving cached fixtures:",
         err,
       );
-      const cached = await getCachedFixtures();
+      const cached = (await getCachedFixtures()).filter(forthcoming);
       if (cached.length > 0) return sortFixtures(cached);
-      return isSupabaseConfigured() ? [] : sortFixtures(MOCK_FIXTURES);
+      return isSupabaseConfigured()
+        ? []
+        : sortFixtures(MOCK_FIXTURES.filter(forthcoming));
     }
   }
-  return sortFixtures(MOCK_FIXTURES);
+  return sortFixtures(MOCK_FIXTURES.filter(forthcoming));
 }
 
 export async function getFixture(id: number): Promise<Fixture | null> {
@@ -172,6 +197,57 @@ export async function getFixture(id: number): Promise<Fixture | null> {
   return MOCK_FIXTURES.find((f) => f.id === id) ?? null;
 }
 
+/**
+ * Refresh cached fixtures whose kickoff has passed but that are still marked
+ * upcoming/live (the cache only updates at prediction time and during settle).
+ * Re-fetches them from the sports API and updates the cache, so screens reading
+ * the cache (e.g. "Mes pronostics") show the real status and score. Bounded to
+ * the fixtures passed in; finished/cancelled rows are never re-fetched.
+ */
+async function refreshStaleFixtures(fixtures: Fixture[]): Promise<Fixture[]> {
+  if (!isSportsApiConfigured() || !isAdminConfigured()) return fixtures;
+
+  const now = Date.now();
+  const stale = fixtures.filter(
+    (f) =>
+      (f.status === "upcoming" || f.status === "live") &&
+      new Date(f.kickoff).getTime() < now,
+  );
+  if (stale.length === 0) return fixtures;
+
+  const admin = createAdminClient();
+  const refreshed = new Map<number, Fixture>();
+
+  await Promise.all(
+    stale.map(async (f) => {
+      try {
+        const fresh = await fetchFixtureById(f.id);
+        if (!fresh) return;
+        refreshed.set(f.id, fresh);
+        await admin
+          .from("fixtures")
+          .update({
+            status: fresh.status,
+            elapsed: fresh.elapsed ?? null,
+            home_goals: fresh.score?.home ?? null,
+            away_goals: fresh.score?.away ?? null,
+            league_logo: fresh.league.logoUrl ?? null,
+            home_id: fresh.home.id,
+            home_logo: fresh.home.logoUrl ?? null,
+            away_id: fresh.away.id,
+            away_logo: fresh.away.logoUrl ?? null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", f.id);
+      } catch (err) {
+        console.error(`[refreshStaleFixtures ${f.id}]`, err);
+      }
+    }),
+  );
+
+  return fixtures.map((f) => refreshed.get(f.id) ?? f);
+}
+
 /** Fixtures from the DB cache (those a user has predicted), by id. */
 export async function getFixturesByIds(ids: number[]): Promise<Fixture[]> {
   if (ids.length === 0) return [];
@@ -182,7 +258,8 @@ export async function getFixturesByIds(ids: number[]): Promise<Fixture[]> {
   const supabase = await createClient();
   const { data } = await supabase.from("fixtures").select("*").in("id", ids);
 
-  return ((data as FixtureRow[] | null) ?? []).map(mapFixtureRow);
+  const cached = ((data as FixtureRow[] | null) ?? []).map(mapFixtureRow);
+  return refreshStaleFixtures(cached);
 }
 
 export async function getMyPredictions(): Promise<Prediction[]> {
@@ -278,34 +355,6 @@ interface ProfileRow {
 }
 
 /**
- * TEMP — static players injected on top of the real database users so the
- * podium / leaderboard view can be exercised while few accounts have scored.
- * Flip `WITH_TEST_PLAYERS` to false (or delete the block in buildLeaderboard)
- * to remove them once real data fills in.
- */
-const WITH_TEST_PLAYERS = true;
-const TEST_PLAYERS: Omit<LeaderboardEntry, "rank">[] = [
-  { userId: "test_1", username: "ScorePerfect", points: 312, exactScores: 21 },
-  { userId: "test_2", username: "PronoKing", points: 298, exactScores: 18 },
-  { userId: "test_3", username: "Mbappe_fan", points: 271, exactScores: 16 },
-  { userId: "test_4", username: "TacticsNerd", points: 244, exactScores: 12 },
-  { userId: "test_5", username: "GegenPress", points: 219, exactScores: 11 },
-  { userId: "test_6", username: "VAR_hater", points: 187, exactScores: 9 },
-  { userId: "test_7", username: "CatenaccioKid", points: 173, exactScores: 8 },
-  { userId: "test_8", username: "TikiTaka", points: 161, exactScores: 8 },
-  { userId: "test_9", username: "ParisSaint", points: 154, exactScores: 7 },
-  { userId: "test_10", username: "LaRemontada", points: 142, exactScores: 6 },
-  { userId: "test_11", username: "PanenkaPro", points: 131, exactScores: 6 },
-  { userId: "test_12", username: "OffsideTrap", points: 118, exactScores: 5 },
-  { userId: "test_13", username: "NutmegNinja", points: 104, exactScores: 4 },
-  { userId: "test_14", username: "DerbyDay", points: 92, exactScores: 4 },
-  { userId: "test_15", username: "ZoneMarking", points: 77, exactScores: 3 },
-  { userId: "test_16", username: "BoxToBox", points: 63, exactScores: 2 },
-  { userId: "test_17", username: "FalseNine", points: 48, exactScores: 2 },
-  { userId: "test_18", username: "LongBall", points: 31, exactScores: 1 },
-];
-
-/**
  * Full monthly ranking, including players with 0 points: every profile is
  * listed, scored from the `monthly_leaderboard()` RPC, and ranked in JS
  * (standard competition ranking — ties share a rank). This works regardless of
@@ -335,9 +384,6 @@ async function buildLeaderboard(): Promise<LeaderboardEntry[]> {
       exactScores: s?.exactScores ?? 0,
     };
   });
-
-  // TEMP — pad with static test players so the podium has something to show.
-  if (WITH_TEST_PLAYERS) entries.push(...TEST_PLAYERS);
 
   entries.sort(
     (a, b) =>

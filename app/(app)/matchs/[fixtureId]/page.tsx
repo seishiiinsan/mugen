@@ -5,11 +5,13 @@ import { isPredictionOpen, lockTime } from "@/lib/domain/predictions";
 import { SCORING_RULES } from "@/lib/domain/scoring";
 import { BOOSTS, leaderboardMonth, scoreBoosted } from "@/lib/domain/boosts";
 import type { BoostType } from "@/lib/domain/types";
+import { fetchMatchExtras } from "@/lib/bzzoiro/match-extras";
 import { formatKickoff, formatMatchDay, formatTime } from "@/lib/ui/format";
 import { ChevronLeftIcon, LockIcon } from "../../_components/icons";
 import { StatusBadge } from "../../_components/status-badge";
 import { TeamCrest } from "../../_components/team-crest";
 import { PredictionForm } from "./prediction-form";
+import { MatchExtras } from "./match-extras";
 
 export default async function FixturePage(
   props: PageProps<"/matchs/[fixtureId]">,
@@ -18,11 +20,17 @@ export default async function FixturePage(
   const id = Number(fixtureId);
   if (Number.isNaN(id)) notFound();
 
-  const [fixture, prediction] = await Promise.all([
-    getFixture(id),
-    getPredictionForFixture(id),
-  ]);
+  const fixture = await getFixture(id);
   if (!fixture) notFound();
+
+  const [prediction, extras] = await Promise.all([
+    getPredictionForFixture(id),
+    fetchMatchExtras(id, {
+      leagueId: fixture.league.id || undefined,
+      homeTeamId: fixture.home.id || undefined,
+      awayTeamId: fixture.away.id || undefined,
+    }),
+  ]);
 
   const open = isPredictionOpen(fixture);
   const settled = fixture.status === "finished" && fixture.score !== null;
@@ -81,52 +89,59 @@ export default async function FixturePage(
           {formatMatchDay(fixture.kickoff)} · {formatTime(fixture.kickoff)}
           {fixture.venue ? ` · ${fixture.venue}` : ""}
         </p>
-      </header>
 
-      {/* Prediction */}
-      <section>
-        <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-faint">
-          Votre pronostic
-        </h2>
+        {/* Prediction — integrated into the hero card */}
+        <div className="mt-5 border-t border-border pt-5">
+          <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-faint">
+            Votre pronostic
+          </h2>
 
-        {open ? (
-          <>
-            <PredictionForm
-              fixtureId={fixture.id}
-              homeName={fixture.home.name}
-              awayName={fixture.away.name}
-              homeLogo={fixture.home.logoUrl}
-              awayLogo={fixture.away.logoUrl}
-              initial={
+          {open ? (
+            <>
+              <PredictionForm
+                bare
+                fixtureId={fixture.id}
+                homeName={fixture.home.name}
+                awayName={fixture.away.name}
+                homeLogo={fixture.home.logoUrl}
+                awayLogo={fixture.away.logoUrl}
+                initial={
+                  prediction
+                    ? { home: prediction.home, away: prediction.away }
+                    : null
+                }
+                initialBoost={prediction?.boost ?? null}
+                initialSecondary={prediction?.secondary ?? null}
+                boostStock={boostStock.remaining}
+              />
+              <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-faint">
+                <LockIcon className="size-3.5" />
+                Clôture {formatKickoff(lockTime(fixture).toISOString())} · 15 min
+                avant le coup d&apos;envoi
+              </p>
+            </>
+          ) : (
+            <ResultCard
+              prediction={
                 prediction
                   ? { home: prediction.home, away: prediction.away }
                   : null
               }
-              initialBoost={prediction?.boost ?? null}
-              initialSecondary={prediction?.secondary ?? null}
-              boostStock={boostStock.remaining}
+              secondary={prediction?.secondary ?? null}
+              boost={prediction?.boost ?? null}
+              actual={fixture.score}
+              settled={settled}
+              result={result}
             />
-            <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs text-faint">
-              <LockIcon className="size-3.5" />
-              Clôture {formatKickoff(lockTime(fixture).toISOString())} · 15 min
-              avant le coup d&apos;envoi
-            </p>
-          </>
-        ) : (
-          <ResultCard
-            prediction={
-              prediction
-                ? { home: prediction.home, away: prediction.away }
-                : null
-            }
-            secondary={prediction?.secondary ?? null}
-            boost={prediction?.boost ?? null}
-            actual={fixture.score}
-            settled={settled}
-            result={result}
-          />
-        )}
-      </section>
+          )}
+        </div>
+      </header>
+
+      <MatchExtras
+        extras={extras}
+        homeName={fixture.home.name}
+        awayName={fixture.away.name}
+      />
     </article>
   );
 }
@@ -172,7 +187,7 @@ function ResultCard({
       : null;
 
   return (
-    <div className="space-y-3 rounded-xl border border-border bg-surface p-5">
+    <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 text-sm">
         <span className="flex items-center gap-1.5 text-faint">
           <LockIcon className="size-3.5" /> Pronostic verrouillé

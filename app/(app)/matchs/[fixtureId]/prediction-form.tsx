@@ -16,6 +16,7 @@ export function PredictionForm({
   initialBoost,
   initialSecondary,
   boostStock,
+  bare = false,
 }: {
   fixtureId: number;
   homeName: string;
@@ -26,6 +27,8 @@ export function PredictionForm({
   initialBoost: BoostType | null;
   initialSecondary: { home: number; away: number } | null;
   boostStock: BoostType[];
+  /** Drop the card chrome when embedded inside another card. */
+  bare?: boolean;
 }) {
   const [state, action, pending] = useActionState<PredictionFormState, FormData>(
     submitPrediction,
@@ -43,7 +46,7 @@ export function PredictionForm({
   return (
     <form
       action={action}
-      className="rounded-xl border border-border bg-surface p-5"
+      className={bare ? "" : "rounded-xl border border-border bg-surface p-5"}
     >
       <input type="hidden" name="fixtureId" value={fixtureId} />
       <input type="hidden" name="home" value={home} />

@@ -7,7 +7,6 @@ const STATUS_FILTERS = [
   { value: "all", label: "Tous" },
   { value: "live", label: "En cours" },
   { value: "upcoming", label: "À venir" },
-  { value: "finished", label: "Terminés" },
 ] as const;
 
 const DEBOUNCE_MS = 250;

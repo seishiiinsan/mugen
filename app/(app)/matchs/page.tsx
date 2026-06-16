@@ -42,10 +42,7 @@ export default async function MatchsPage(props: PageProps<"/matchs">) {
   // Apply filters.
   const needle = q.toLowerCase();
   const filtered = all.filter((f) => {
-    if (
-      (status === "live" || status === "upcoming" || status === "finished") &&
-      f.status !== status
-    )
+    if ((status === "live" || status === "upcoming") && f.status !== status)
       return false;
     if (league && String(f.league.id) !== league) return false;
     if (
@@ -59,10 +56,9 @@ export default async function MatchsPage(props: PageProps<"/matchs">) {
   });
 
   const liveCount = all.filter((f) => f.status === "live").length;
-  const dayLabel = new Intl.DateTimeFormat("fr-FR", {
-    weekday: "long",
-    day: "numeric",
+  const monthLabel = new Intl.DateTimeFormat("fr-FR", {
     month: "long",
+    year: "numeric",
     timeZone: "Europe/Paris",
   }).format(new Date());
 
@@ -95,10 +91,10 @@ export default async function MatchsPage(props: PageProps<"/matchs">) {
           )}
         </div>
         <p className="mt-1 text-sm text-muted">
-          <span className="capitalize">{dayLabel}</span>
+          <span className="capitalize">{monthLabel}</span>
           <span className="text-faint">
             {" "}
-            · {all.length} match{all.length > 1 ? "s" : ""}
+            · {all.length} match{all.length > 1 ? "s" : ""} à venir
           </span>
         </p>
       </header>
@@ -108,7 +104,7 @@ export default async function MatchsPage(props: PageProps<"/matchs">) {
       {slice.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">
           {all.length === 0
-            ? "Aucun match disponible pour le moment. Réessaie plus tard."
+            ? "Aucun match à venir ce mois-ci."
             : "Aucun match ne correspond à ces filtres."}
         </p>
       ) : (

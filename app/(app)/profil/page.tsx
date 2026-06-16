@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import {
   getCurrentUser,
@@ -107,11 +108,23 @@ export default async function ProfilPage() {
       <header className="relative overflow-hidden rounded-xl border border-border bg-gradient-to-br from-accent/[0.08] via-surface to-surface p-5">
         <div className="flex items-center gap-4">
           <div
-            className={`grid size-16 shrink-0 place-items-center rounded-full bg-surface text-2xl font-bold ring-2 ${
+            className={`relative size-16 shrink-0 overflow-hidden rounded-full bg-surface ring-2 ${
               medal ? medal.ring : "ring-accent/30"
             }`}
           >
-            {me.username.charAt(0).toUpperCase()}
+            {me.avatarUrl ? (
+              <Image
+                src={me.avatarUrl}
+                alt=""
+                fill
+                sizes="64px"
+                className="object-cover"
+              />
+            ) : (
+              <span className="grid size-full place-items-center text-2xl font-bold">
+                {me.username.charAt(0).toUpperCase()}
+              </span>
+            )}
           </div>
           <div className="min-w-0">
             <h1 className="truncate text-2xl font-bold tracking-tight">
@@ -120,6 +133,12 @@ export default async function ProfilPage() {
             <p className="text-sm capitalize text-muted">
               Membre depuis {joined}
             </p>
+            <Link
+              href="/profil/modifier"
+              className="mt-1 inline-block text-xs font-medium text-accent hover:underline"
+            >
+              Modifier le profil
+            </Link>
           </div>
         </div>
 
