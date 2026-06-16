@@ -7,6 +7,7 @@ import {
   getMyAchievementKeys,
   getMyBadges,
   getMyBoostStock,
+  getMyLevel,
   getMyMonthlyStats,
   getMyPredictions,
 } from "@/lib/data";
@@ -62,7 +63,7 @@ function rankMedal(rank: number | null) {
 }
 
 export default async function ProfilPage() {
-  const [me, stats, predictions, boostStock, badges, achievementKeys] =
+  const [me, stats, predictions, boostStock, badges, achievementKeys, level] =
     await Promise.all([
       getCurrentUser(),
       getMyMonthlyStats(),
@@ -70,10 +71,13 @@ export default async function ProfilPage() {
       getMyBoostStock(),
       getMyBadges(),
       getMyAchievementKeys(),
+      getMyLevel(),
     ]);
   if (!me) redirect("/login");
 
   const unlocked = new Set(achievementKeys);
+  const levelPct = Math.round((level.current / level.needed) * 100);
+  const showcaseBadge = me.equippedBadge ? BADGE_META[me.equippedBadge] : null;
 
   const fixtures = await getFixturesByIds(predictions.map((p) => p.fixtureId));
   const byId = new Map(fixtures.map((f) => [f.id, f]));
@@ -134,26 +138,37 @@ export default async function ProfilPage() {
       {/* Hero identity card — subtle accent wash, podium-aware rank badge */}
       <header className="relative overflow-hidden rounded-xl border border-border bg-gradient-to-br from-accent/[0.08] via-surface to-surface p-5">
         <div className="flex items-center gap-4">
-          <div
-            className={`relative size-16 shrink-0 overflow-hidden rounded-full bg-surface ring-2 ${
-              medal
-                ? medal.ring
-                : me.equippedFrame
-                  ? frameRing(me.equippedFrame)
-                  : "ring-accent/30"
-            }`}
-          >
-            {me.avatarUrl ? (
-              <Image
-                src={me.avatarUrl}
-                alt=""
-                fill
-                sizes="64px"
-                className="object-cover"
-              />
-            ) : (
-              <span className="grid size-full place-items-center text-2xl font-bold">
-                {me.username.charAt(0).toUpperCase()}
+          <div className="relative shrink-0">
+            <div
+              className={`relative size-16 overflow-hidden rounded-full bg-surface ring-2 ${
+                medal
+                  ? medal.ring
+                  : me.equippedFrame
+                    ? frameRing(me.equippedFrame)
+                    : "ring-accent/30"
+              }`}
+            >
+              {me.avatarUrl ? (
+                <Image
+                  src={me.avatarUrl}
+                  alt=""
+                  fill
+                  sizes="64px"
+                  className="object-cover"
+                />
+              ) : (
+                <span className="grid size-full place-items-center text-2xl font-bold">
+                  {me.username.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
+            {showcaseBadge && (
+              <span
+                title={showcaseBadge.label}
+                className="absolute -bottom-1 -right-1 grid size-6 place-items-center rounded-full border border-border bg-surface text-sm"
+                aria-hidden
+              >
+                {showcaseBadge.emoji}
               </span>
             )}
           </div>
@@ -181,6 +196,9 @@ export default async function ProfilPage() {
               <span className="inline-flex items-center gap-1 text-xs font-semibold tabular-nums text-foreground">
                 <CoinIcon className="size-3.5 text-accent" />
                 {me.coins}
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold tabular-nums text-accent">
+                Niv. {level.level}
               </span>
             </div>
           </div>
@@ -321,14 +339,38 @@ export default async function ProfilPage() {
         )}
       </div>
 
-      {/* Badges & succès */}
-      <div>
-        <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-faint">
-          Badges & succès
-        </h2>
+      {/* Niveau & succès — résumé, détail sur /succes */}
+      <Link
+        href="/succes"
+        className="block rounded-xl border border-border bg-surface p-4 transition-colors hover:border-border-strong"
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Niveau & succès</h2>
+          <span className="text-xs font-medium text-accent">Voir tout →</span>
+        </div>
+
+        <div className="mt-3 flex items-center gap-3">
+          <span className="font-mono text-2xl font-bold tabular-nums">
+            {level.level}
+          </span>
+          <div className="flex-1">
+            <div className="h-2 overflow-hidden rounded-full bg-surface-2">
+              <div
+                className="h-full rounded-full bg-accent"
+                style={{ width: `${levelPct}%` }}
+              />
+            </div>
+            <div className="mt-1 flex justify-between font-mono text-[11px] tabular-nums text-faint">
+              <span>{level.current} / {level.needed} XP</span>
+              <span>
+                {unlocked.size}/{ACHIEVEMENTS.length} succès
+              </span>
+            </div>
+          </div>
+        </div>
 
         {badges.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-1.5">
             {badges.map((key) => {
               const meta = BADGE_META[key];
               if (!meta) return null;
@@ -336,54 +378,20 @@ export default async function ProfilPage() {
                 <span
                   key={key}
                   title={meta.label}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/[0.06] px-2.5 py-1 text-xs font-medium"
+                  className={`grid size-7 place-items-center rounded-full border text-sm ${
+                    me.equippedBadge === key
+                      ? "border-accent bg-accent/10"
+                      : "border-border bg-surface-2"
+                  }`}
+                  aria-hidden
                 >
-                  <span aria-hidden>{meta.emoji}</span>
-                  {meta.label}
+                  {meta.emoji}
                 </span>
               );
             })}
           </div>
         )}
-
-        <ul className="space-y-2">
-          {ACHIEVEMENTS.map((a) => {
-            const done = unlocked.has(a.key);
-            return (
-              <li
-                key={a.key}
-                className={`flex items-center justify-between gap-3 rounded-lg border p-3 ${
-                  done
-                    ? "border-accent/30 bg-accent/[0.05]"
-                    : "border-border bg-surface"
-                }`}
-              >
-                <div className="min-w-0">
-                  <div
-                    className={`text-sm font-medium ${done ? "" : "text-muted"}`}
-                  >
-                    {a.name}
-                  </div>
-                  <div className="text-xs text-faint">{a.description}</div>
-                </div>
-                <span
-                  className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-mono text-xs font-semibold tabular-nums ${
-                    done ? "bg-accent/10 text-accent" : "text-faint"
-                  }`}
-                >
-                  {done ? (
-                    "Débloqué ✓"
-                  ) : (
-                    <>
-                      <CoinIcon className="size-3.5" />+{a.coins}
-                    </>
-                  )}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+      </Link>
 
       {/* Scoring reference — tucked behind a small "i" disclosure */}
       <details className="group rounded-xl border border-border bg-surface">

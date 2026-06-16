@@ -6,6 +6,36 @@
 /** Coins awarded per point earned on a settled prediction. */
 export const COINS_PER_POINT = 1;
 
+/** XP awarded per point earned (lifetime). XP is computed, never stored. */
+export const XP_PER_POINT = 10;
+
+export interface Level {
+  level: number;
+  /** XP accumulated within the current level. */
+  current: number;
+  /** XP needed to clear the current level. */
+  needed: number;
+  /** Total lifetime XP. */
+  total: number;
+}
+
+/**
+ * Level from total XP. Each level costs a bit more than the last
+ * (level L → L+1 needs 100·L XP), so progression slows gracefully.
+ */
+export function levelFromXp(xp: number): Level {
+  const total = Math.max(0, Math.floor(xp));
+  let level = 1;
+  let acc = 0;
+  let needed = 100;
+  while (total >= acc + needed) {
+    acc += needed;
+    level += 1;
+    needed = 100 * level;
+  }
+  return { level, current: total - acc, needed, total };
+}
+
 /** Cosmetic rarity tier derived from its price (drives shop styling). */
 export type Rarity = "common" | "rare" | "epic" | "legendary";
 
@@ -51,6 +81,8 @@ export interface Achievement {
   description: string;
   /** Coins awarded on unlock. */
   coins: number;
+  /** XP awarded on unlock. */
+  xp: number;
   /** Cosmetic badge item granted on unlock (item key), if any. */
   badge: string | null;
   /** Met by these lifetime stats? */
@@ -64,14 +96,25 @@ export const ACHIEVEMENTS: Achievement[] = [
     name: "Premier pronostic",
     description: "Soumettre et régler un premier pronostic.",
     coins: 20,
+    xp: 50,
     badge: null,
     test: (s) => s.settled >= 1,
+  },
+  {
+    key: "played_10",
+    name: "10 pronostics",
+    description: "Régler dix pronostics.",
+    coins: 50,
+    xp: 100,
+    badge: "badge_played_10",
+    test: (s) => s.settled >= 10,
   },
   {
     key: "first_exact",
     name: "Premier score exact",
     description: "Trouver un premier score exact.",
     coins: 50,
+    xp: 150,
     badge: "badge_first_exact",
     test: (s) => s.exacts >= 1,
   },
@@ -80,15 +123,35 @@ export const ACHIEVEMENTS: Achievement[] = [
     name: "10 scores exacts",
     description: "Cumuler dix scores exacts.",
     coins: 150,
+    xp: 400,
     badge: "badge_exact_10",
     test: (s) => s.exacts >= 10,
+  },
+  {
+    key: "exact_25",
+    name: "25 scores exacts",
+    description: "Cumuler vingt-cinq scores exacts.",
+    coins: 300,
+    xp: 900,
+    badge: "badge_exact_25",
+    test: (s) => s.exacts >= 25,
   },
   {
     key: "played_50",
     name: "50 pronostics",
     description: "Régler cinquante pronostics.",
     coins: 100,
+    xp: 300,
     badge: "badge_played_50",
     test: (s) => s.settled >= 50,
+  },
+  {
+    key: "played_100",
+    name: "100 pronostics",
+    description: "Régler cent pronostics.",
+    coins: 250,
+    xp: 700,
+    badge: "badge_played_100",
+    test: (s) => s.settled >= 100,
   },
 ];

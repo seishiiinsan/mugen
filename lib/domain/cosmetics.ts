@@ -50,7 +50,10 @@ export const TITLE_TEXT: Record<string, string> = {
 export const BADGE_META: Record<string, { emoji: string; label: string }> = {
   badge_first_exact: { emoji: "🎯", label: "Premier score exact" },
   badge_exact_10: { emoji: "🎯", label: "10 scores exacts" },
+  badge_exact_25: { emoji: "🏹", label: "25 scores exacts" },
+  badge_played_10: { emoji: "⚽", label: "10 pronostics" },
   badge_played_50: { emoji: "📊", label: "50 pronostics" },
+  badge_played_100: { emoji: "🔥", label: "100 pronostics" },
   badge_month_gold: { emoji: "🥇", label: "Champion du mois" },
   badge_month_silver: { emoji: "🥈", label: "Vice-champion" },
   badge_month_bronze: { emoji: "🥉", label: "Podium du mois" },

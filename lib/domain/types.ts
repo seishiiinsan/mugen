@@ -99,6 +99,7 @@ export interface UserProfile {
   equippedFrame: string | null;
   equippedTitle: string | null;
   equippedColor: string | null;
+  equippedBadge: string | null;
 }
 
 /** A shop catalog entry with the viewer's ownership/equipped state. */

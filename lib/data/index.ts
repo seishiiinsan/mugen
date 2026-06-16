@@ -28,6 +28,12 @@ import type {
   UserProfile,
 } from "@/lib/domain/types";
 import { activeLeaderboardMonth, BOOST_TYPES } from "@/lib/domain/boosts";
+import {
+  ACHIEVEMENTS,
+  levelFromXp,
+  XP_PER_POINT,
+  type Level,
+} from "@/lib/domain/economy";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
@@ -467,7 +473,7 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
   if (!user) return null;
 
   const cols =
-    "username, avatar_url, created_at, coins, equipped_frame, equipped_title, equipped_color";
+    "username, avatar_url, created_at, coins, equipped_frame, equipped_title, equipped_color, equipped_badge";
   let { data: profile } = await supabase
     .from("profiles")
     .select(cols)
@@ -499,6 +505,7 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
     equippedFrame: profile?.equipped_frame ?? null,
     equippedTitle: profile?.equipped_title ?? null,
     equippedColor: profile?.equipped_color ?? null,
+    equippedBadge: profile?.equipped_badge ?? null,
   };
 }
 
@@ -510,6 +517,7 @@ interface ProfileSelfRow {
   equipped_frame: string | null;
   equipped_title: string | null;
   equipped_color: string | null;
+  equipped_badge: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -665,6 +673,28 @@ export async function getMyBadges(): Promise<string[]> {
     .eq("user_id", user.id)
     .eq("shop_items.kind", "badge");
   return ((data as { item_key: string }[] | null) ?? []).map((r) => r.item_key);
+}
+
+/** Current level, derived from lifetime points (×XP_PER_POINT) + achievement XP. */
+export async function getMyLevel(): Promise<Level> {
+  if (!isSupabaseConfigured()) return levelFromXp(1280);
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return levelFromXp(0);
+
+  const [{ data: pts }, achKeys] = await Promise.all([
+    supabase.rpc("my_lifetime_points"),
+    getMyAchievementKeys(),
+  ]);
+  const lifetimePoints = Number(pts ?? 0);
+  const unlocked = new Set(achKeys);
+  const achXp = ACHIEVEMENTS.filter((a) => unlocked.has(a.key)).reduce(
+    (sum, a) => sum + a.xp,
+    0,
+  );
+  return levelFromXp(lifetimePoints * XP_PER_POINT + achXp);
 }
 
 /** Keys of achievements the user has unlocked. */
