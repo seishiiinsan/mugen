@@ -17,12 +17,16 @@ import {
 } from "@/lib/mock/fixtures";
 import type {
   BoostType,
+  ChangelogEntry,
   CoinEntry,
   Fixture,
   FixtureStatus,
   Group,
   LeaderboardEntry,
   Prediction,
+  Report,
+  ReportCategory,
+  ReportStatus,
   ScorerPick,
   ShopItem,
   UserProfile,
@@ -814,4 +818,132 @@ export async function getMyCoinHistory(limit = 8): Promise<CoinEntry[]> {
     ref: r.ref,
     createdAt: r.created_at,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// ADMIN, SIGNALEMENTS & CHANGELOG
+// ---------------------------------------------------------------------------
+
+/** Whether the current user is flagged `is_admin` (gates the /admin panel). */
+export async function getIsAdmin(): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .maybeSingle<{ is_admin: boolean }>();
+  return Boolean(data?.is_admin);
+}
+
+interface MyReportRow {
+  id: string;
+  category: ReportCategory;
+  title: string;
+  message: string;
+  status: ReportStatus;
+  page_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** The current user's own reports (newest first). */
+export async function getMyReports(): Promise<Report[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_reports");
+  if (error) {
+    console.error("[getMyReports]", error);
+    return [];
+  }
+  return ((data as MyReportRow[] | null) ?? []).map((r) => ({
+    id: r.id,
+    category: r.category,
+    title: r.title,
+    message: r.message,
+    status: r.status,
+    pageUrl: r.page_url,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  }));
+}
+
+interface AdminReportRow extends MyReportRow {
+  user_id: string | null;
+  username: string | null;
+  admin_notes: string | null;
+}
+
+/** Every report with its author (admin only — RPC enforces the guard). */
+export async function getAdminReports(): Promise<Report[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_list_reports");
+  if (error) {
+    console.error("[getAdminReports]", error);
+    return [];
+  }
+  return ((data as AdminReportRow[] | null) ?? []).map((r) => ({
+    id: r.id,
+    userId: r.user_id,
+    username: r.username,
+    category: r.category,
+    title: r.title,
+    message: r.message,
+    status: r.status,
+    pageUrl: r.page_url,
+    adminNotes: r.admin_notes,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  }));
+}
+
+interface ChangelogRow {
+  id: string;
+  version: string | null;
+  title: string;
+  body: string;
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+function mapChangelogRow(r: ChangelogRow): ChangelogEntry {
+  return {
+    id: r.id,
+    version: r.version,
+    title: r.title,
+    body: r.body,
+    published: r.published,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+/** Published changelog entries (public, newest first). Read via RLS policy. */
+export async function getPublishedChangelog(): Promise<ChangelogEntry[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("changelog")
+    .select("id, version, title, body, published, created_at, updated_at")
+    .eq("published", true)
+    .order("created_at", { ascending: false });
+  return ((data as ChangelogRow[] | null) ?? []).map(mapChangelogRow);
+}
+
+/** All changelog entries incl. drafts (admin only — RPC enforces the guard). */
+export async function getAdminChangelog(): Promise<ChangelogEntry[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_list_changelog");
+  if (error) {
+    console.error("[getAdminChangelog]", error);
+    return [];
+  }
+  return ((data as ChangelogRow[] | null) ?? []).map(mapChangelogRow);
 }

@@ -129,3 +129,36 @@ export interface Group {
   memberCount: number;
   createdAt: string;
 }
+
+/** A player-submitted report (bug / suggestion / other). */
+export type ReportCategory = "bug" | "suggestion" | "other";
+export type ReportStatus = "new" | "in_progress" | "done" | "rejected";
+
+export interface Report {
+  id: string;
+  /** Author id, null if the account was since deleted. Only set for admins. */
+  userId?: string | null;
+  /** Author username — only joined for the admin view. */
+  username?: string | null;
+  category: ReportCategory;
+  title: string;
+  message: string;
+  status: ReportStatus;
+  /** Page the report was filed from, if captured. */
+  pageUrl?: string | null;
+  /** Admin-only triage notes. */
+  adminNotes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A changelog entry (admin-authored, markdown body). */
+export interface ChangelogEntry {
+  id: string;
+  version?: string | null;
+  title: string;
+  body: string;
+  published: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
