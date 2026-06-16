@@ -19,11 +19,20 @@ export const NAME_COLOR: Record<string, string> = {
   color_amber: "text-amber-500",
 };
 
-/** Displayed title text by title item key. */
+/** Displayed title text by title item key (ladder of rising prestige). */
 export const TITLE_TEXT: Record<string, string> = {
   title_rookie: "Rookie",
+  title_parieur: "Parieur",
+  title_pronostiqueur: "Pronostiqueur",
   title_tacticien: "Tacticien",
+  title_analyste: "Analyste",
+  title_stratege: "Stratège",
+  title_oracle: "Oracle",
   title_visionnaire: "Visionnaire",
+  title_maestro: "Maestro",
+  title_devin: "Devin",
+  title_legende: "Légende",
+  title_mugen: "無限",
 };
 
 /** Badge display (emoji + tone) by badge item key. */

@@ -158,16 +158,18 @@ export default async function ProfilPage() {
             )}
           </div>
           <div className="min-w-0">
-            <h1
-              className={`truncate text-2xl font-bold tracking-tight ${nameColor(me.equippedColor)}`}
-            >
-              {me.username}
-            </h1>
-            {titleText(me.equippedTitle) && (
-              <span className="mt-0.5 inline-block rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted">
-                {titleText(me.equippedTitle)}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              <h1
+                className={`truncate text-2xl font-bold tracking-tight ${nameColor(me.equippedColor)}`}
+              >
+                {me.username}
+              </h1>
+              {titleText(me.equippedTitle) && (
+                <span className="shrink-0 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                  {titleText(me.equippedTitle)}
+                </span>
+              )}
+            </div>
             <p className="mt-0.5 text-sm text-muted">Membre depuis {joined}</p>
             <div className="mt-1.5 flex items-center gap-3">
               <Link

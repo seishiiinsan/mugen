@@ -6,6 +6,16 @@
 /** Coins awarded per point earned on a settled prediction. */
 export const COINS_PER_POINT = 1;
 
+/** Cosmetic rarity tier derived from its price (drives shop styling). */
+export type Rarity = "common" | "rare" | "epic" | "legendary";
+
+export function rarityOf(price: number): { tier: Rarity; label: string } {
+  if (price >= 4000) return { tier: "legendary", label: "Légendaire" };
+  if (price >= 1500) return { tier: "epic", label: "Épique" };
+  if (price >= 500) return { tier: "rare", label: "Rare" };
+  return { tier: "common", label: "Commun" };
+}
+
 /** Flat daily login bonus (claimable once per UTC day). */
 export const DAILY_BONUS = 20;
 

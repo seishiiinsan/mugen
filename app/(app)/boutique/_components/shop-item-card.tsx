@@ -2,24 +2,64 @@
 
 import { useActionState } from "react";
 import type { ShopItem } from "@/lib/domain/types";
+import { rarityOf, type Rarity } from "@/lib/domain/economy";
 import { frameRing, nameColor, titleText } from "@/lib/domain/cosmetics";
-import { CoinIcon } from "../../_components/icons";
+import { CoinIcon, LockIcon } from "../../_components/icons";
 import { equipItem, purchaseItem, type ShopActionState } from "../actions";
+
+const RARITY_CHIP: Record<Rarity, string> = {
+  common: "border-border text-faint",
+  rare: "border-accent/40 bg-accent/10 text-accent",
+  epic: "border-sky-500/40 bg-sky-500/10 text-sky-500",
+  legendary: "border-gold/50 bg-gold/10 text-gold",
+};
+
+const RARITY_GLOW: Record<Rarity, string> = {
+  common: "",
+  rare: "",
+  epic: "",
+  legendary: "ring-1 ring-gold/30",
+};
 
 export function ShopItemCard({
   item,
-  affordable,
+  balance,
 }: {
   item: ShopItem;
-  affordable: boolean;
+  balance: number;
 }) {
   const [state, buy, buying] = useActionState<ShopActionState, FormData>(
     purchaseItem,
     {},
   );
+  const { tier, label } = rarityOf(item.price);
+  const affordable = balance >= item.price;
+  const missing = Math.max(0, item.price - balance);
 
   return (
-    <div className="flex flex-col rounded-xl border border-border bg-surface p-4">
+    <div
+      className={`group relative flex flex-col rounded-xl border bg-surface p-4 transition-all hover:-translate-y-0.5 hover:border-border-strong ${
+        item.equipped ? "border-accent/50" : "border-border"
+      } ${RARITY_GLOW[tier]}`}
+    >
+      {/* Rarity + owned markers */}
+      <div className="mb-2 flex items-center justify-between">
+        <span
+          className={`rounded-full border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${RARITY_CHIP[tier]}`}
+        >
+          {label}
+        </span>
+        {item.equipped ? (
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-accent">
+            Équipé
+          </span>
+        ) : item.owned ? (
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-faint">
+            Possédé
+          </span>
+        ) : null}
+      </div>
+
       <Preview item={item} />
 
       <div className="mt-3 min-w-0 flex-1">
@@ -42,22 +82,29 @@ export function ShopItemCard({
                   : "border-border hover:border-border-strong"
               }`}
             >
-              {item.equipped ? "Équipé ✓ — retirer" : "Équiper"}
+              {item.equipped ? "Retirer" : "Équiper"}
             </button>
           </form>
-        ) : (
+        ) : affordable ? (
           <form action={buy}>
             <input type="hidden" name="key" value={item.key} />
             <button
               type="submit"
-              disabled={buying || !affordable}
-              className="press flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={buying}
+              className="press flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-strong disabled:opacity-50"
             >
               <CoinIcon className="size-4" />
               {item.price}
-              {!affordable && <span className="text-xs">· solde insuffisant</span>}
             </button>
           </form>
+        ) : (
+          <div
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 text-xs font-medium text-faint"
+            title={`Il te manque ${missing} pièces`}
+          >
+            <LockIcon className="size-3.5" />
+            Il te manque {missing}
+          </div>
         )}
         {state.error && (
           <p className="mt-1.5 text-center text-xs text-danger">{state.error}</p>
@@ -90,7 +137,7 @@ function Preview({ item }: { item: ShopItem }) {
   if (item.kind === "title") {
     return (
       <div className="flex h-12 items-center justify-center">
-        <span className="rounded-full border border-border px-2.5 py-1 text-xs font-medium text-muted">
+        <span className="rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent">
           {titleText(item.key) || item.name}
         </span>
       </div>

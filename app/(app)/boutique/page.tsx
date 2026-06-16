@@ -33,8 +33,8 @@ export default async function BoutiquePage() {
               Cosmétiques uniquement — aucun avantage en jeu.
             </p>
           </div>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 font-mono text-sm font-semibold tabular-nums">
-            <CoinIcon className="size-4 text-accent" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-gradient-to-br from-accent/15 to-accent/5 px-3 py-1.5 font-mono text-sm font-semibold tabular-nums text-accent">
+            <CoinIcon className="size-4" />
             {me.coins}
           </span>
         </div>
@@ -60,11 +60,7 @@ export default async function BoutiquePage() {
                 </h2>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {group.map((item) => (
-                    <ShopItemCard
-                      key={item.key}
-                      item={item}
-                      affordable={me.coins >= item.price}
-                    />
+                    <ShopItemCard key={item.key} item={item} balance={me.coins} />
                   ))}
                 </div>
               </div>
