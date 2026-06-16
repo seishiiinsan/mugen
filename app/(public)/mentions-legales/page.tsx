@@ -21,35 +21,26 @@ export default function MentionsLegalesPage() {
     <article className="mx-auto w-full max-w-2xl px-6 pb-20 pt-28 sm:pt-32">
       <h1 className="text-3xl font-bold tracking-tight">Mentions légales</h1>
       <p className="mt-3 text-sm text-faint">
-        Dernière mise à jour : à compléter par l&apos;éditeur.
+        Dernière mise à jour : 16/06/2026
       </p>
 
       <Block title="Éditeur">
         <p>
-          Mugen est édité par BeProject. Pour toute question, contactez{" "}
+          Mugen est édité par Gabin Hallosserie. Pour toute question, contactez{" "}
           <a
-            href="mailto:webmaster@beproject.fr"
+            href="mailto:gabinhalloss@gmail.com"
             className="font-medium text-accent hover:underline"
           >
-            webmaster@beproject.fr
+            gabinhalloss@gmail.com
           </a>
           .
         </p>
-        <p className="text-faint">
-          Raison sociale, forme juridique, capital, RCS et adresse postale : à
-          renseigner.
-        </p>
-      </Block>
-
-      <Block title="Directeur de la publication">
-        <p>À renseigner par l&apos;éditeur.</p>
       </Block>
 
       <Block title="Hébergement">
         <p>
-          L&apos;application est hébergée par son fournisseur d&apos;infrastructure
-          (front) et par Supabase (base de données et authentification). Les noms
-          et adresses des hébergeurs sont à compléter selon le déploiement.
+          L&apos;application est hébergée par Vercel et par Supabase 
+          (base de données et authentification).
         </p>
       </Block>
 
