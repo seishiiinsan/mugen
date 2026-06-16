@@ -170,13 +170,10 @@ export function Hero() {
           {/* Prediction card */}
           <div className="absolute left-1/2 top-1/2 w-72 -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-surface p-5 shadow-[0_24px_60px_-30px_rgba(190,52,85,0.5)]">
             <div className="text-xs font-medium uppercase tracking-wide text-faint">
-              Match du soir
+              Ligue 1 · ce soir
             </div>
             <div className="mt-4 flex items-center justify-between gap-3">
-              <span className="flex items-center gap-2 font-medium">
-                <span className="size-6 rounded-full bg-surface-2 ring-1 ring-border" />
-                Équipe A
-              </span>
+              <span className="font-medium">PSG</span>
               <div className="flex items-center gap-1.5 font-mono text-xl font-bold tabular-nums">
                 <span className="grid size-9 place-items-center rounded-lg bg-accent/10 text-accent">
                   2
@@ -186,10 +183,7 @@ export function Hero() {
                   1
                 </span>
               </div>
-              <span className="flex items-center gap-2 font-medium">
-                Équipe B
-                <span className="size-6 rounded-full bg-surface-2 ring-1 ring-border" />
-              </span>
+              <span className="font-medium">OM</span>
             </div>
             <div className="mt-4 rounded-lg bg-success/10 py-2 text-center text-sm font-semibold text-success">
               +10 pts · score exact
