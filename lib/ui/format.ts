@@ -45,3 +45,13 @@ export function formatMatchDay(iso: string): string {
     timeZone: "Europe/Paris",
   }).format(new Date(iso));
 }
+
+/** Long date, e.g. "15 juin 2026" (Europe/Paris). */
+export function formatDate(iso: string): string {
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/Paris",
+  }).format(new Date(iso));
+}
