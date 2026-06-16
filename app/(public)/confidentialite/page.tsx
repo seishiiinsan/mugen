@@ -21,7 +21,7 @@ export default function ConfidentialitePage() {
     <article className="mx-auto w-full max-w-2xl px-6 pb-20 pt-28 sm:pt-32">
       <h1 className="text-3xl font-bold tracking-tight">Confidentialité</h1>
       <p className="mt-3 text-sm text-faint">
-        Dernière mise à jour : à compléter par l&apos;éditeur.
+        Dernière mise à jour : 16/06/2026
       </p>
 
       <Block title="Données collectées">
@@ -71,10 +71,10 @@ export default function ConfidentialitePage() {
           rectification et de suppression de tes données. Pour l&apos;exercer,
           écris à{" "}
           <a
-            href="mailto:webmaster@beproject.fr"
+            href="mailto:gabinhalloss@gmail.com"
             className="font-medium text-accent hover:underline"
           >
-            webmaster@beproject.fr
+            gabinhalloss@gmail.com
           </a>
           .
         </p>
