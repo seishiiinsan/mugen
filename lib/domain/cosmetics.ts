@@ -9,6 +9,11 @@ export const FRAME_RING: Record<string, string> = {
   frame_steel: "ring-2 ring-slate-400",
   frame_neon: "ring-2 ring-fuchsia-500",
   frame_gold: "ring-2 ring-amber-400",
+  frame_emerald: "ring-2 ring-emerald-500",
+  frame_sky: "ring-2 ring-sky-500",
+  frame_violet: "ring-2 ring-violet-500",
+  frame_crimson: "ring-2 ring-rose-600",
+  frame_royal: "ring-2 ring-indigo-500",
 };
 
 /** Username text-color classes by color item key. */
@@ -17,6 +22,12 @@ export const NAME_COLOR: Record<string, string> = {
   color_emerald: "text-emerald-500",
   color_azure: "text-sky-500",
   color_amber: "text-amber-500",
+  color_rose: "text-rose-500",
+  color_violet: "text-violet-500",
+  color_teal: "text-teal-500",
+  color_orange: "text-orange-500",
+  color_indigo: "text-indigo-500",
+  color_gold: "text-amber-400",
 };
 
 /** Displayed title text by title item key (ladder of rising prestige). */

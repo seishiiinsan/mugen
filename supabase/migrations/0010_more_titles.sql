@@ -19,3 +19,22 @@ insert into public.shop_items (key, kind, name, description, price, sort, active
   ('title_legende',      'title', 'Titre « Légende »',       'Affiche le titre Légende.',     10000,  40, true),
   ('title_mugen',        'title', 'Titre « 無限 »',           'Le titre ultime, 無限 (Mugen).',  20000,  41, true)
 on conflict (key) do nothing;
+
+-- Nouvelles couleurs de pseudo (visuels dans lib/domain/cosmetics.ts).
+insert into public.shop_items (key, kind, name, description, price, sort, active) values
+  ('color_rose',   'color', 'Pseudo rose',     'Affiche ton pseudo en rose.',          150,  24, true),
+  ('color_violet', 'color', 'Pseudo violet',   'Affiche ton pseudo en violet.',        150,  25, true),
+  ('color_teal',   'color', 'Pseudo turquoise','Affiche ton pseudo en turquoise.',     150,  26, true),
+  ('color_orange', 'color', 'Pseudo orange',   'Affiche ton pseudo en orange.',        150,  27, true),
+  ('color_indigo', 'color', 'Pseudo indigo',   'Affiche ton pseudo en indigo.',        150,  28, true),
+  ('color_gold',   'color', 'Pseudo or',       'Affiche ton pseudo en or (premium).',  800,  29, true)
+on conflict (key) do nothing;
+
+-- Nouveaux cadres d'avatar (anneaux colorés), en paliers de rareté.
+insert into public.shop_items (key, kind, name, description, price, sort, active) values
+  ('frame_emerald', 'frame', 'Cadre émeraude', 'Anneau vert émeraude.',     700,  13, true),
+  ('frame_sky',     'frame', 'Cadre azur',     'Anneau bleu azur.',         700,  14, true),
+  ('frame_violet',  'frame', 'Cadre violet',   'Anneau violet.',           1300,  15, true),
+  ('frame_crimson', 'frame', 'Cadre cramoisi', 'Anneau rouge cramoisi.',   1800,  16, true),
+  ('frame_royal',   'frame', 'Cadre royal',    'Anneau indigo prestige.',  4500,  17, true)
+on conflict (key) do nothing;
