@@ -9,10 +9,32 @@ import { POINTS, scorePrediction, type PointsValue } from "./scoring";
 
 export type { BoostType };
 
-/** Leaderboard month key ('YYYY-MM', UTC) — matches the DB bonus_month trigger. */
+/** Leaderboard month key ('YYYY-MM', UTC) of a given date — pure, unshifted.
+ *  Use this for a *match's own* month (derived from its kickoff). */
 export function leaderboardMonth(date: Date | string = new Date()): string {
   const d = typeof date === "string" ? new Date(date) : date;
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
+ * Grace window (hours) during which the *outgoing* month stays the active
+ * aggregation month after midnight UTC on the 1st. It lets the month's last
+ * matches — which kick off late on the last day and finish/settle after
+ * midnight — land in their month's final standings before the leaderboard
+ * rolls over. Sized as ≈ a match (2h) + the hourly settle cron's latency (1h).
+ *
+ * IMPORTANT: this lag applies ONLY to aggregation (leaderboards, displayed
+ * boost stock). It must NOT gate prediction eligibility or the matches list,
+ * otherwise early-of-month fixtures (00:00–03:00 UTC on the 1st) would never be
+ * predictable. Those use the strict calendar month by `now`.
+ *
+ * Kept in sync with `public.active_month_start()` in migration 0006.
+ */
+export const MONTH_GRACE_HOURS = 3;
+
+/** The active aggregation month key right now (outgoing month during grace). */
+export function activeLeaderboardMonth(now: Date = new Date()): string {
+  return leaderboardMonth(new Date(now.getTime() - MONTH_GRACE_HOURS * 3_600_000));
 }
 
 export const BOOST_TYPES: readonly BoostType[] = [

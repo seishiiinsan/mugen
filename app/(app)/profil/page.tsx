@@ -10,6 +10,7 @@ import {
 } from "@/lib/data";
 import { SCORING_RULES, scorePrediction } from "@/lib/domain/scoring";
 import {
+  activeLeaderboardMonth,
   BOOSTS,
   BOOST_TYPES,
   leaderboardMonth,
@@ -53,7 +54,8 @@ export default async function ProfilPage() {
   const byId = new Map(fixtures.map((f) => [f.id, f]));
 
   // Boosts actually played this month: which match, and what it brought.
-  const thisMonth = leaderboardMonth();
+  // Uses the grace-lagged active month so it matches the displayed leaderboard.
+  const thisMonth = activeLeaderboardMonth();
   const boostUsage = predictions
     .filter((p) => p.boost)
     .map((p) => {

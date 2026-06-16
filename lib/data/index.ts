@@ -24,7 +24,7 @@ import type {
   Prediction,
   UserProfile,
 } from "@/lib/domain/types";
-import { BOOST_TYPES, leaderboardMonth } from "@/lib/domain/boosts";
+import { activeLeaderboardMonth, BOOST_TYPES } from "@/lib/domain/boosts";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
@@ -140,27 +140,34 @@ async function getCachedFixtures(): Promise<Fixture[]> {
 }
 
 /**
- * Forthcoming matches of the current month: every upcoming (or live) fixture
- * whose kickoff falls within this calendar month (UTC, matching the monthly
- * leaderboard). Finished matches are intentionally excluded — a user revisits
- * those via "Mes pronostics".
+ * Forthcoming matches of the current calendar month (strict UTC, matching the
+ * eligibility rule "only this month's matches are predictable"). Finished
+ * matches are intentionally excluded — a user revisits those via "Mes
+ * pronostics".
+ *
+ * Month bounds are derived from `now` (NOT the grace-lagged aggregation month):
+ * a new month's fixtures must open for prediction at 00:00 UTC on the 1st. The
+ * upper fetch bound is widened by one day so a last-evening match (e.g. 23:00
+ * on the last day) is still returned even if the provider files it under the
+ * 1st of next month; the precise UTC filter then keeps only true in-month rows.
  */
 export async function getFixtures(): Promise<Fixture[]> {
   const now = new Date();
-  const from = now.toISOString().slice(0, 10);
-  const lastDay = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0),
-  );
-  const to = lastDay.toISOString().slice(0, 10);
-  const startNextMonthMs = Date.UTC(
+  const monthStartMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
+  const nextMonthStartMs = Date.UTC(
     now.getUTCFullYear(),
     now.getUTCMonth() + 1,
     1,
   );
+  const from = now.toISOString().slice(0, 10);
+  // First day of next month: a +1-day buffer over the real last day.
+  const to = new Date(nextMonthStartMs).toISOString().slice(0, 10);
 
-  const forthcoming = (f: Fixture): boolean =>
-    (f.status === "upcoming" || f.status === "live") &&
-    new Date(f.kickoff).getTime() < startNextMonthMs;
+  const forthcoming = (f: Fixture): boolean => {
+    if (f.status !== "upcoming" && f.status !== "live") return false;
+    const k = new Date(f.kickoff).getTime();
+    return k >= monthStartMs && k < nextMonthStartMs;
+  };
 
   if (isSportsApiConfigured()) {
     try {
@@ -317,7 +324,7 @@ export async function getPredictionForFixture(
  * whose fixture falls in that month.
  */
 export async function getMyBoostStock(
-  month: string = leaderboardMonth(),
+  month: string = activeLeaderboardMonth(),
 ): Promise<{ used: BoostType[]; remaining: BoostType[] }> {
   if (!isSupabaseConfigured()) {
     return { used: [], remaining: [...BOOST_TYPES] };
