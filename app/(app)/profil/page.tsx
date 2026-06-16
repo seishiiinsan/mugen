@@ -455,7 +455,14 @@ export default async function ProfilPage() {
       </details>
 
       {/* Account footer */}
-      <footer className="border-t border-border pt-5">
+      <footer className="flex flex-col items-center gap-1 border-t border-border pt-5">
+        <Link
+          href="/signaler"
+          className="press inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-faint transition-colors hover:bg-surface-2 hover:text-foreground"
+        >
+          <InfoIcon className="size-4" />
+          Signaler un problème ou une idée
+        </Link>
         <form action={signOut} className="flex justify-center">
           <button
             type="submit"
