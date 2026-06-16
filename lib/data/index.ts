@@ -658,6 +658,62 @@ export async function getShopItems(): Promise<ShopItem[]> {
   }));
 }
 
+/**
+ * Owned special items that aren't sold in the shop (granted rewards), excluding
+ * badges (those use the showcase). Equippable like normal cosmetics.
+ */
+export async function getMyGrantedItems(): Promise<ShopItem[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const [{ data }, { data: eq }] = await Promise.all([
+    supabase
+      .from("user_items")
+      .select(
+        "item_key, shop_items!inner(kind, name, description, price, active)",
+      )
+      .eq("user_id", user.id)
+      .eq("shop_items.active", false)
+      .neq("shop_items.kind", "badge"),
+    supabase
+      .from("profiles")
+      .select("equipped_frame, equipped_title, equipped_color")
+      .eq("id", user.id)
+      .maybeSingle(),
+  ]);
+
+  const equippedSet = new Set(
+    [
+      (eq as { equipped_frame: string | null } | null)?.equipped_frame,
+      (eq as { equipped_title: string | null } | null)?.equipped_title,
+      (eq as { equipped_color: string | null } | null)?.equipped_color,
+    ].filter((k): k is string => Boolean(k)),
+  );
+
+  type Row = {
+    item_key: string;
+    shop_items: {
+      kind: ShopItem["kind"];
+      name: string;
+      description: string | null;
+      price: number;
+    };
+  };
+  return ((data as Row[] | null) ?? []).map((r) => ({
+    key: r.item_key,
+    kind: r.shop_items.kind,
+    name: r.shop_items.name,
+    description: r.shop_items.description,
+    price: r.shop_items.price,
+    owned: true,
+    equipped: equippedSet.has(r.item_key),
+  }));
+}
+
 /** Owned badge item keys (for profile display). */
 export async function getMyBadges(): Promise<string[]> {
   if (!isSupabaseConfigured()) return [];

@@ -44,6 +44,9 @@ export const TITLE_TEXT: Record<string, string> = {
   title_devin: "Devin",
   title_legende: "Légende",
   title_mugen: "無限",
+  // Spéciaux (non vendables)
+  title_first: "First",
+  title_staff: "Staff",
 };
 
 /** Badge display (emoji + tone) by badge item key. */
@@ -57,6 +60,11 @@ export const BADGE_META: Record<string, { emoji: string; label: string }> = {
   badge_month_gold: { emoji: "🥇", label: "Champion du mois" },
   badge_month_silver: { emoji: "🥈", label: "Vice-champion" },
   badge_month_bronze: { emoji: "🥉", label: "Podium du mois" },
+  // Spéciaux (octroyés auto ou par l'admin)
+  badge_founder: { emoji: "🏛️", label: "Fondateur" },
+  badge_beta: { emoji: "🧪", label: "Beta-testeur" },
+  badge_bughunter: { emoji: "🐛", label: "Bug hunter" },
+  badge_vip: { emoji: "💎", label: "VIP" },
 };
 
 export function frameRing(key: string | null | undefined): string {

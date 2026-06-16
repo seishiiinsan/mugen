@@ -1,5 +1,10 @@
 import { redirect } from "next/navigation";
-import { canClaimDaily, getCurrentUser, getShopItems } from "@/lib/data";
+import {
+  canClaimDaily,
+  getCurrentUser,
+  getMyGrantedItems,
+  getShopItems,
+} from "@/lib/data";
 import { DAILY_BONUS } from "@/lib/domain/economy";
 import type { ShopItem } from "@/lib/domain/types";
 import { CoinIcon, ShopIcon } from "../_components/icons";
@@ -13,10 +18,11 @@ const SECTIONS: { kind: ShopItem["kind"]; label: string }[] = [
 ];
 
 export default async function BoutiquePage() {
-  const [me, items, claimable] = await Promise.all([
+  const [me, items, claimable, granted] = await Promise.all([
     getCurrentUser(),
     getShopItems(),
     canClaimDaily(),
+    getMyGrantedItems(),
   ]);
   if (!me) redirect("/login");
 
@@ -66,6 +72,22 @@ export default async function BoutiquePage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {granted.length > 0 && (
+        <div className="mt-6">
+          <h2 className="mb-1 text-xs font-medium uppercase tracking-wide text-faint">
+            Objets reçus
+          </h2>
+          <p className="mb-2 text-xs text-faint">
+            Récompenses spéciales — non vendables, à toi de les équiper.
+          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {granted.map((item) => (
+              <ShopItemCard key={item.key} item={item} balance={me.coins} />
+            ))}
+          </div>
         </div>
       )}
     </section>
