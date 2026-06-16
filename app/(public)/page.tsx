@@ -37,12 +37,11 @@ const PODIUM = [
 ];
 
 const BADGES = [
-  "Premier prono",
-  "Score parfait",
-  "Série de 5",
-  "Top 10 mondial",
-  "Centurion",
-  "Sans-faute du week-end",
+  "Premier score exact",
+  "10 scores exacts",
+  "100 pronostics",
+  "Podium du mois",
+  "Fondateur",
 ];
 
 const COMPARISON = {
@@ -67,7 +66,7 @@ const FAQ = [
   },
   {
     q: "Comment je marque des points ?",
-    a: "Score exact = 10 pts. Le bon vainqueur ou le bon écart rapportent aussi. Plus tu es précis, plus tu marques.",
+    a: "Score exact = 10 pts. Le bon vainqueur ou le bon écart rapportent aussi. Tu peux en plus désigner les buteurs pour grappiller des points bonus. Plus tu es précis, plus tu marques.",
   },
   {
     q: "Quand le classement est-il remis à zéro ?",
@@ -351,15 +350,16 @@ export default function Home() {
       {/* Rewards · cosmetics · badges */}
       <Band>
         <Reveal className="mx-auto max-w-xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-faint">
+          <span className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/[0.06] px-3 py-1 text-xs font-medium text-accent">
             <span className="size-1.5 rounded-full bg-accent" />
-            Phase 2 · bientôt
+            Disponible maintenant
           </span>
           <h2 className="mt-5 text-3xl font-bold tracking-tight sm:text-4xl">
             Bien plus que des points
           </h2>
           <p className="mt-3 text-muted">
-            Joue, progresse, débloque. Chaque pronostic nourrit ta collection.
+            Pièces, niveaux, succès, boutique : chaque pronostic nourrit ta
+            progression et ta collection.
           </p>
         </Reveal>
 
@@ -400,8 +400,8 @@ export default function Home() {
               </h3>
             </div>
             <p className="mt-3 text-sm text-muted">
-              Personnalise ton profil : avatars, cadres et thèmes à débloquer
-              dans la boutique.
+              Personnalise ton profil : cadres d&apos;avatar, couleurs de pseudo,
+              titres et badges à débloquer dans la boutique.
             </p>
             <div className="mt-5 flex items-center gap-3">
               <span className="size-10 rounded-full bg-surface-2 ring-2 ring-accent/40" />

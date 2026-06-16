@@ -4,6 +4,12 @@ import Link from "next/link";
 import { POINTS, SCORING_RULES } from "@/lib/domain/scoring";
 import { BOOSTS, BOOST_TYPES } from "@/lib/domain/boosts";
 import {
+  MAX_SCORERS,
+  SCORER_HIT_BY_ROLE,
+  SCORER_MISS,
+} from "@/lib/domain/markets";
+import { LOCK_MINUTES_BEFORE_KICKOFF } from "@/lib/domain/predictions";
+import {
   ACHIEVEMENTS,
   COINS_PER_POINT,
   DAILY_BONUS,
@@ -34,12 +40,22 @@ const SECTIONS = [
   { id: "principe", label: "Le principe" },
   { id: "pronostiquer", label: "Pronostiquer" },
   { id: "bareme", label: "Le barème" },
+  { id: "buteurs", label: "Les buteurs" },
   { id: "boosts", label: "Les boosts" },
   { id: "classement", label: "Classement mensuel" },
   { id: "economie", label: "Pièces & boutique" },
   { id: "niveaux", label: "Niveaux & XP" },
   { id: "succes", label: "Succès & badges" },
   { id: "groupes", label: "Groupes privés" },
+];
+
+// Goalscorer barème, sourced from the live market constants.
+const SCORER_RULES = [
+  { label: "Buteur — gardien", points: SCORER_HIT_BY_ROLE.G },
+  { label: "Buteur — défenseur", points: SCORER_HIT_BY_ROLE.D },
+  { label: "Buteur — milieu", points: SCORER_HIT_BY_ROLE.M },
+  { label: "Buteur — attaquant", points: SCORER_HIT_BY_ROLE.F },
+  { label: "Buteur manqué", points: SCORER_MISS },
 ];
 
 function barFor(points: number): string {
@@ -159,7 +175,7 @@ export default function WikiPage() {
               {[
                 {
                   t: "Avant le coup d'envoi",
-                  d: "Un pronostic se pose tant que le match n'a pas commencé. Tu peux le modifier jusqu'au coup d'envoi.",
+                  d: `Tu peux poser et modifier ton pronostic librement jusqu'à ${LOCK_MINUTES_BEFORE_KICKOFF} minutes avant le coup d'envoi. Passé ce délai, il est verrouillé.`,
                 },
                 {
                   t: "Le mois en cours",
@@ -215,6 +231,49 @@ export default function WikiPage() {
             <div className="mt-6">
               <ScoringPlayground />
             </div>
+          </Section>
+
+          <Section
+            id="buteurs"
+            icon={<span className="text-lg">⚽</span>}
+            eyebrow="Bonus"
+            title="Les buteurs"
+          >
+            <p className="-mt-2 mb-5 text-muted">
+              En plus du score, tu peux désigner jusqu&apos;à {MAX_SCORERS}{" "}
+              buteurs. Plus le buteur est inattendu, plus il rapporte — mais
+              chaque erreur coûte des points.
+            </p>
+            <Card>
+              <ul className="divide-y divide-border">
+                {SCORER_RULES.map((rule) => {
+                  const negative = rule.points < 0;
+                  return (
+                    <li
+                      key={rule.label}
+                      className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                    >
+                      <span className="text-sm text-muted">{rule.label}</span>
+                      <span
+                        className={`shrink-0 rounded-full px-2.5 py-0.5 font-mono text-sm font-semibold tabular-nums ${
+                          negative
+                            ? "bg-danger/10 text-danger"
+                            : "bg-accent/10 text-accent"
+                        }`}
+                      >
+                        {rule.points > 0 ? "+" : ""}
+                        {rule.points} pts
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="mt-4 rounded-lg bg-surface-2/60 px-3 py-2 text-xs text-faint">
+                Les points buteurs s&apos;ajoutent après l&apos;éventuel boost, et
+                le total d&apos;un match ne descend jamais sous 0 — tenter un
+                buteur n&apos;est jamais perdant pour ton classement.
+              </p>
+            </Card>
           </Section>
 
           <Section
