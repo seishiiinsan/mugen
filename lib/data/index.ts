@@ -352,6 +352,7 @@ interface LeaderboardRow {
 interface ProfileRow {
   id: string;
   username: string;
+  avatar_url: string | null;
 }
 
 /**
@@ -364,7 +365,7 @@ async function buildLeaderboard(): Promise<LeaderboardEntry[]> {
   const supabase = await createClient();
   const [{ data: scoredData }, { data: profilesData }] = await Promise.all([
     supabase.rpc("monthly_leaderboard", { limit_count: 5000 }),
-    supabase.from("profiles").select("id, username"),
+    supabase.from("profiles").select("id, username, avatar_url"),
   ]);
 
   const scored = new Map<string, { points: number; exactScores: number }>();
@@ -382,6 +383,7 @@ async function buildLeaderboard(): Promise<LeaderboardEntry[]> {
       username: p.username,
       points: s?.points ?? 0,
       exactScores: s?.exactScores ?? 0,
+      avatarUrl: p.avatar_url ?? undefined,
     };
   });
 

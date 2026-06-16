@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Fixture } from "@/lib/domain/types";
 import { getFixtures, getMyPredictions } from "@/lib/data";
 import { FixtureCard } from "../_components/fixture-card";
+import { MatchesIcon } from "../_components/icons";
 import { FilterBar } from "./_components/filter-bar";
 
 const PAGE_SIZE = 15;
@@ -82,21 +83,28 @@ export default async function MatchsPage(props: PageProps<"/matchs">) {
     <section>
       <header className="mb-5">
         <div className="flex items-center gap-2.5">
-          <h1 className="text-xl font-semibold tracking-tight">Matchs</h1>
-          {liveCount > 0 && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger">
-              <span className="size-1.5 rounded-full bg-danger motion-safe:animate-pulse" />
-              {liveCount} en direct
-            </span>
-          )}
-        </div>
-        <p className="mt-1 text-sm text-muted">
-          <span className="capitalize">{monthLabel}</span>
-          <span className="text-faint">
-            {" "}
-            · {all.length} match{all.length > 1 ? "s" : ""} à venir
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent/10 text-accent">
+            <MatchesIcon className="size-5" />
           </span>
-        </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-semibold tracking-tight">Matchs</h1>
+              {liveCount > 0 && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger">
+                  <span className="size-1.5 rounded-full bg-danger motion-safe:animate-pulse" />
+                  {liveCount} en direct
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-muted">
+              <span className="capitalize">{monthLabel}</span>
+              <span className="text-faint">
+                {" "}
+                · {all.length} match{all.length > 1 ? "s" : ""} à venir
+              </span>
+            </p>
+          </div>
+        </div>
       </header>
 
       <FilterBar leagues={leagues} />

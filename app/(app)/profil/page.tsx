@@ -130,7 +130,7 @@ export default async function ProfilPage() {
             <h1 className="truncate text-2xl font-bold tracking-tight">
               {me.username}
             </h1>
-            <p className="text-sm capitalize text-muted">
+            <p className="text-sm text-muted">
               Membre depuis {joined}
             </p>
             <Link

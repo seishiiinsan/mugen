@@ -72,6 +72,8 @@ export interface LeaderboardEntry {
   points: number;
   /** Monthly exact-score count, handy for tie-break display. */
   exactScores: number;
+  /** Profile picture (Supabase Storage or OAuth), undefined if none set. */
+  avatarUrl?: string;
 }
 
 export interface UserProfile {

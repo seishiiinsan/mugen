@@ -4,6 +4,7 @@ import { getFixturesByIds, getMyPredictions } from "@/lib/data";
 import { scoreBoosted } from "@/lib/domain/boosts";
 import { FixtureCard } from "../_components/fixture-card";
 import { PredictionsIcon } from "../_components/icons";
+import { PronosFilterBar } from "./_components/pronos-filter-bar";
 
 interface Row {
   prediction: Prediction;
@@ -12,7 +13,18 @@ interface Row {
   exact: boolean;
 }
 
-export default async function MesPronosticsPage() {
+function one(value: string | string[] | undefined): string {
+  return (Array.isArray(value) ? value[0] : value) ?? "";
+}
+
+export default async function MesPronosticsPage(
+  props: PageProps<"/mes-pronostics">,
+) {
+  const sp = await props.searchParams;
+  const statusFilter = one(sp.status);
+  const leagueFilter = one(sp.league);
+  const q = one(sp.q).trim().toLowerCase();
+
   const predictions = await getMyPredictions();
   const fixtures = await getFixturesByIds(predictions.map((p) => p.fixtureId));
   const byId = new Map(fixtures.map((f) => [f.id, f]));
@@ -37,23 +49,51 @@ export default async function MesPronosticsPage() {
     })
     .filter((r): r is Row => r !== null);
 
-  const finished = rows
+  // Overall stats are always computed on every prediction (independent of the
+  // active filters), so the cards reflect the player's true totals.
+  const allFinished = rows.filter((r) => r.earned != null);
+  const totalPoints = allFinished.reduce((sum, r) => sum + (r.earned ?? 0), 0);
+  const exactScores = allFinished.filter((r) => r.exact).length;
+  const pendingTotal = rows.length - allFinished.length;
+
+  // League options for the filter, derived from the predicted fixtures.
+  const leagueNames = new Map<number, string>();
+  for (const r of rows) leagueNames.set(r.fixture.league.id, r.fixture.league.name);
+  const leagues = [...leagueNames]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+
+  // Apply filters to the displayed rows only.
+  const visible = rows.filter((r) => {
+    const isFinished = r.earned != null;
+    if (statusFilter === "finished" && !isFinished) return false;
+    if (statusFilter === "pending" && isFinished) return false;
+    if (leagueFilter && String(r.fixture.league.id) !== leagueFilter)
+      return false;
+    if (
+      q &&
+      !r.fixture.home.name.toLowerCase().includes(q) &&
+      !r.fixture.away.name.toLowerCase().includes(q) &&
+      !r.fixture.league.name.toLowerCase().includes(q)
+    )
+      return false;
+    return true;
+  });
+
+  const finished = visible
     .filter((r) => r.earned != null)
     .sort(
       (a, b) =>
         new Date(b.fixture.kickoff).getTime() -
         new Date(a.fixture.kickoff).getTime(),
     );
-  const pending = rows
+  const pending = visible
     .filter((r) => r.earned == null)
     .sort(
       (a, b) =>
         new Date(a.fixture.kickoff).getTime() -
         new Date(b.fixture.kickoff).getTime(),
     );
-
-  const totalPoints = finished.reduce((sum, r) => sum + (r.earned ?? 0), 0);
-  const exactScores = finished.filter((r) => r.exact).length;
 
   return (
     <section>
@@ -67,9 +107,9 @@ export default async function MesPronosticsPage() {
               <h1 className="text-xl font-semibold tracking-tight">
                 Mes pronostics
               </h1>
-              {pending.length > 0 && (
+              {pendingTotal > 0 && (
                 <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
-                  {pending.length} à suivre
+                  {pendingTotal} à suivre
                 </span>
               )}
             </div>
@@ -100,11 +140,21 @@ export default async function MesPronosticsPage() {
             <Stat label="Scores exacts" value={exactScores} />
           </div>
 
-          {pending.length > 0 && (
-            <Group title="À suivre" rows={pending} />
-          )}
-          {finished.length > 0 && (
-            <Group title="Terminés" rows={finished} />
+          <PronosFilterBar leagues={leagues} />
+
+          {visible.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">
+              Aucun pronostic ne correspond à ces filtres.
+            </p>
+          ) : (
+            <>
+              {pending.length > 0 && (
+                <Group title="À suivre" rows={pending} />
+              )}
+              {finished.length > 0 && (
+                <Group title="Terminés" rows={finished} />
+              )}
+            </>
           )}
         </>
       )}

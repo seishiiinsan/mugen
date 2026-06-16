@@ -17,7 +17,10 @@ export default async function AppLayout({
             <Nav />
           </div>
 
-          <ProfileAvatar username={user?.username ?? "?"} />
+          <ProfileAvatar
+            username={user?.username ?? "?"}
+            avatarUrl={user?.avatarUrl}
+          />
         </div>
       </header>
 

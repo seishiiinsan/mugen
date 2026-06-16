@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser, getMonthlyLeaderboard } from "@/lib/data";
 import type { LeaderboardEntry } from "@/lib/domain/types";
 import { CrownIcon } from "../_components/icons";
+import { UserAvatar } from "../_components/user-avatar";
 
 /** Visual tier for a podium slot, keyed by display position (0 = top). */
 const PODIUM = [
@@ -34,9 +35,6 @@ const PODIUM = [
   },
 ] as const;
 
-function initial(name: string): string {
-  return name.trim().charAt(0).toUpperCase() || "?";
-}
 
 function PodiumSpot({
   entry,
@@ -55,11 +53,12 @@ function PodiumSpot({
         {tier === 0 && (
           <CrownIcon className="absolute -top-5 left-1/2 h-5 w-5 -translate-x-1/2 text-gold" />
         )}
-        <div
-          className={`grid h-14 w-14 place-items-center rounded-full bg-surface-2 text-lg font-semibold ring-2 ${t.ring}`}
-        >
-          {initial(entry.username)}
-        </div>
+        <UserAvatar
+          username={entry.username}
+          avatarUrl={entry.avatarUrl}
+          sizes="56px"
+          className={`size-14 rounded-full bg-surface-2 text-lg font-semibold ring-2 ${t.ring}`}
+        />
         <span
           className={`absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full border border-border bg-surface px-1.5 text-xs font-bold tabular-nums ${t.medal}`}
         >
@@ -97,6 +96,12 @@ function RankRow({ entry, isMe }: { entry: LeaderboardEntry; isMe: boolean }) {
       <span className="w-7 shrink-0 text-center font-mono text-sm font-semibold tabular-nums text-muted">
         {entry.rank}
       </span>
+      <UserAvatar
+        username={entry.username}
+        avatarUrl={entry.avatarUrl}
+        sizes="36px"
+        className="size-9 rounded-full border border-border bg-surface-2 text-sm font-semibold"
+      />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate font-medium">{entry.username}</span>
