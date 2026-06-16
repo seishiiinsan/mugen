@@ -8,6 +8,11 @@ import {
 import { scoreFull } from "@/lib/domain/markets";
 import type { BoostType, ScorerPick } from "@/lib/domain/types";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
+import {
+  grantAchievements,
+  grantPredictionCoins,
+  payoutMonthIfDue,
+} from "@/lib/economy";
 
 export interface SettleResult {
   fixturesChecked: number;
@@ -49,6 +54,7 @@ export async function settlePredictions(): Promise<SettleResult> {
 
   let fixturesSettled = 0;
   let predictionsUpdated = 0;
+  const affectedUsers = new Set<string>();
 
   for (const fixtureId of fixtureIds) {
     const fixture = await fetchFixtureById(fixtureId);
@@ -91,7 +97,7 @@ export async function settlePredictions(): Promise<SettleResult> {
     const { data: preds } = await admin
       .from("predictions")
       .select(
-        "id, home_goals, away_goals, boost, home_goals_2, away_goals_2, scorers",
+        "id, user_id, home_goals, away_goals, boost, home_goals_2, away_goals_2, scorers",
       )
       .eq("fixture_id", fixtureId)
       .is("points", null);
@@ -99,6 +105,7 @@ export async function settlePredictions(): Promise<SettleResult> {
     for (const p of (preds as
       | {
           id: string;
+          user_id: string;
           home_goals: number;
           away_goals: number;
           boost: BoostType | null;
@@ -122,9 +129,19 @@ export async function settlePredictions(): Promise<SettleResult> {
         .from("predictions")
         .update({ points, base_points: basePoints })
         .eq("id", p.id);
+      // Award coins for the points earned (idempotent by prediction id).
+      await grantPredictionCoins(admin, p.user_id, p.id, points);
+      affectedUsers.add(p.user_id);
       predictionsUpdated++;
     }
   }
+
+  // Unlock achievements for everyone who got settled this run, then pay the
+  // previous month's leaderboard if it's now due. All idempotent.
+  for (const userId of affectedUsers) {
+    await grantAchievements(admin, userId);
+  }
+  await payoutMonthIfDue(admin);
 
   return {
     fixturesChecked: fixtureIds.length,

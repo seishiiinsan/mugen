@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import {
   getCurrentUser,
   getFixturesByIds,
+  getMyAchievementKeys,
+  getMyBadges,
   getMyBoostStock,
   getMyMonthlyStats,
   getMyPredictions,
@@ -17,9 +19,17 @@ import {
   scoreBoosted,
 } from "@/lib/domain/boosts";
 import { SCORER_HIT_BY_ROLE, SCORER_MISS } from "@/lib/domain/markets";
+import { ACHIEVEMENTS } from "@/lib/domain/economy";
+import {
+  BADGE_META,
+  frameRing,
+  nameColor,
+  titleText,
+} from "@/lib/domain/cosmetics";
 import { signOut } from "@/app/login/actions";
 import {
   ChevronLeftIcon,
+  CoinIcon,
   CrownIcon,
   InfoIcon,
   LogoutIcon,
@@ -52,13 +62,18 @@ function rankMedal(rank: number | null) {
 }
 
 export default async function ProfilPage() {
-  const [me, stats, predictions, boostStock] = await Promise.all([
-    getCurrentUser(),
-    getMyMonthlyStats(),
-    getMyPredictions(),
-    getMyBoostStock(),
-  ]);
+  const [me, stats, predictions, boostStock, badges, achievementKeys] =
+    await Promise.all([
+      getCurrentUser(),
+      getMyMonthlyStats(),
+      getMyPredictions(),
+      getMyBoostStock(),
+      getMyBadges(),
+      getMyAchievementKeys(),
+    ]);
   if (!me) redirect("/login");
+
+  const unlocked = new Set(achievementKeys);
 
   const fixtures = await getFixturesByIds(predictions.map((p) => p.fixtureId));
   const byId = new Map(fixtures.map((f) => [f.id, f]));
@@ -121,7 +136,11 @@ export default async function ProfilPage() {
         <div className="flex items-center gap-4">
           <div
             className={`relative size-16 shrink-0 overflow-hidden rounded-full bg-surface ring-2 ${
-              medal ? medal.ring : "ring-accent/30"
+              medal
+                ? medal.ring
+                : me.equippedFrame
+                  ? frameRing(me.equippedFrame)
+                  : "ring-accent/30"
             }`}
           >
             {me.avatarUrl ? (
@@ -139,18 +158,29 @@ export default async function ProfilPage() {
             )}
           </div>
           <div className="min-w-0">
-            <h1 className="truncate text-2xl font-bold tracking-tight">
+            <h1
+              className={`truncate text-2xl font-bold tracking-tight ${nameColor(me.equippedColor)}`}
+            >
               {me.username}
             </h1>
-            <p className="text-sm text-muted">
-              Membre depuis {joined}
-            </p>
-            <Link
-              href="/profil/modifier"
-              className="mt-1 inline-block text-xs font-medium text-accent hover:underline"
-            >
-              Modifier le profil
-            </Link>
+            {titleText(me.equippedTitle) && (
+              <span className="mt-0.5 inline-block rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted">
+                {titleText(me.equippedTitle)}
+              </span>
+            )}
+            <p className="mt-0.5 text-sm text-muted">Membre depuis {joined}</p>
+            <div className="mt-1.5 flex items-center gap-3">
+              <Link
+                href="/profil/modifier"
+                className="text-xs font-medium text-accent hover:underline"
+              >
+                Modifier le profil
+              </Link>
+              <span className="inline-flex items-center gap-1 text-xs font-semibold tabular-nums text-foreground">
+                <CoinIcon className="size-3.5 text-accent" />
+                {me.coins}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -289,6 +319,70 @@ export default async function ProfilPage() {
         )}
       </div>
 
+      {/* Badges & succès */}
+      <div>
+        <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-faint">
+          Badges & succès
+        </h2>
+
+        {badges.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {badges.map((key) => {
+              const meta = BADGE_META[key];
+              if (!meta) return null;
+              return (
+                <span
+                  key={key}
+                  title={meta.label}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/[0.06] px-2.5 py-1 text-xs font-medium"
+                >
+                  <span aria-hidden>{meta.emoji}</span>
+                  {meta.label}
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        <ul className="space-y-2">
+          {ACHIEVEMENTS.map((a) => {
+            const done = unlocked.has(a.key);
+            return (
+              <li
+                key={a.key}
+                className={`flex items-center justify-between gap-3 rounded-lg border p-3 ${
+                  done
+                    ? "border-accent/30 bg-accent/[0.05]"
+                    : "border-border bg-surface"
+                }`}
+              >
+                <div className="min-w-0">
+                  <div
+                    className={`text-sm font-medium ${done ? "" : "text-muted"}`}
+                  >
+                    {a.name}
+                  </div>
+                  <div className="text-xs text-faint">{a.description}</div>
+                </div>
+                <span
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-mono text-xs font-semibold tabular-nums ${
+                    done ? "bg-accent/10 text-accent" : "text-faint"
+                  }`}
+                >
+                  {done ? (
+                    "Débloqué ✓"
+                  ) : (
+                    <>
+                      <CoinIcon className="size-3.5" />+{a.coins}
+                    </>
+                  )}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
       {/* Scoring reference — tucked behind a small "i" disclosure */}
       <details className="group rounded-xl border border-border bg-surface">
         <summary className="flex cursor-pointer list-none items-center gap-2 p-3 text-sm font-medium text-muted transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
@@ -361,9 +455,6 @@ export default async function ProfilPage() {
             Se déconnecter
           </button>
         </form>
-        <p className="mt-4 text-center text-xs text-faint">
-          Badges et boutique cosmétique : phase 2.
-        </p>
       </footer>
     </section>
   );

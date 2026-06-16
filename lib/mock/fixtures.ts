@@ -22,6 +22,10 @@ export const CURRENT_USER: UserProfile = {
   joinedAt: "2026-01-04T10:00:00.000Z",
   monthlyPoints: 128,
   worldRank: 42,
+  coins: 420,
+  equippedFrame: null,
+  equippedTitle: null,
+  equippedColor: null,
 };
 
 export const MOCK_FIXTURES: Fixture[] = [

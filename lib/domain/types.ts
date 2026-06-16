@@ -93,6 +93,31 @@ export interface UserProfile {
   joinedAt: string;
   monthlyPoints: number;
   worldRank: number | null;
+  /** In-game currency balance. */
+  coins: number;
+  /** Equipped cosmetic item keys (null when none). */
+  equippedFrame: string | null;
+  equippedTitle: string | null;
+  equippedColor: string | null;
+}
+
+/** A shop catalog entry with the viewer's ownership/equipped state. */
+export interface ShopItem {
+  key: string;
+  kind: "frame" | "title" | "color" | "badge";
+  name: string;
+  description: string | null;
+  price: number;
+  owned: boolean;
+  equipped: boolean;
+}
+
+/** A coin ledger entry. */
+export interface CoinEntry {
+  amount: number;
+  reason: string;
+  ref: string;
+  createdAt: string;
 }
 
 export interface Group {

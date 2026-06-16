@@ -2,17 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { frameRing } from "@/lib/domain/cosmetics";
 import { UserAvatar } from "./user-avatar";
 
 export function ProfileAvatar({
   username,
   avatarUrl,
+  frameKey,
 }: {
   username: string;
   avatarUrl?: string | null;
+  frameKey?: string | null;
 }) {
   const pathname = usePathname();
   const active = pathname === "/profil" || pathname.startsWith("/profil/");
+  const ring = frameRing(frameKey);
 
   return (
     <Link
@@ -27,7 +31,7 @@ export function ProfileAvatar({
         username={username}
         avatarUrl={avatarUrl}
         sizes="32px"
-        className={`size-8 rounded-full border text-sm font-semibold ${
+        className={`size-8 rounded-full border text-sm font-semibold ${ring} ${
           active
             ? "border-accent bg-accent/10 text-accent"
             : "border-border bg-surface-2 text-foreground hover:border-border-strong"

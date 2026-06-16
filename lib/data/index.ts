@@ -17,12 +17,14 @@ import {
 } from "@/lib/mock/fixtures";
 import type {
   BoostType,
+  CoinEntry,
   Fixture,
   FixtureStatus,
   Group,
   LeaderboardEntry,
   Prediction,
   ScorerPick,
+  ShopItem,
   UserProfile,
 } from "@/lib/domain/types";
 import { activeLeaderboardMonth, BOOST_TYPES } from "@/lib/domain/boosts";
@@ -464,11 +466,13 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  const cols =
+    "username, avatar_url, created_at, coins, equipped_frame, equipped_title, equipped_color";
   let { data: profile } = await supabase
     .from("profiles")
-    .select("username, avatar_url, created_at")
+    .select(cols)
     .eq("id", user.id)
-    .maybeSingle();
+    .maybeSingle<ProfileSelfRow>();
 
   // Self-heal: if the profile row is gone but the auth account remains (e.g.
   // it was deleted directly in the DB while the session stayed valid), the
@@ -478,9 +482,9 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
     await ensureProfile(supabase, user);
     ({ data: profile } = await supabase
       .from("profiles")
-      .select("username, avatar_url, created_at")
+      .select(cols)
       .eq("id", user.id)
-      .maybeSingle());
+      .maybeSingle<ProfileSelfRow>());
   }
 
   return {
@@ -491,7 +495,21 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
     // TODO: compute from monthly_leaderboard once predictions are wired to DB.
     monthlyPoints: 0,
     worldRank: null,
+    coins: profile?.coins ?? 0,
+    equippedFrame: profile?.equipped_frame ?? null,
+    equippedTitle: profile?.equipped_title ?? null,
+    equippedColor: profile?.equipped_color ?? null,
   };
+}
+
+interface ProfileSelfRow {
+  username: string;
+  avatar_url: string | null;
+  created_at: string;
+  coins: number;
+  equipped_frame: string | null;
+  equipped_title: string | null;
+  equipped_color: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -565,5 +583,149 @@ export async function getGroupLeaderboard(
     points: Number(r.points),
     exactScores: Number(r.exact_scores),
     avatarUrl: r.avatar_url ?? undefined,
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// ÉCONOMIE (monnaie, boutique, succès)
+// ---------------------------------------------------------------------------
+
+interface ShopItemRow {
+  key: string;
+  kind: ShopItem["kind"];
+  name: string;
+  description: string | null;
+  price: number;
+  sort: number;
+}
+
+/** Sellable catalog with the viewer's owned/equipped flags. */
+export async function getShopItems(): Promise<ShopItem[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: items }, owned, equipped] = await Promise.all([
+    supabase
+      .from("shop_items")
+      .select("key, kind, name, description, price, sort")
+      .eq("active", true)
+      .order("sort"),
+    user
+      ? supabase.from("user_items").select("item_key").eq("user_id", user.id)
+      : Promise.resolve({ data: [] as { item_key: string }[] }),
+    user
+      ? supabase
+          .from("profiles")
+          .select("equipped_frame, equipped_title, equipped_color")
+          .eq("id", user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const ownedSet = new Set(
+    ((owned.data as { item_key: string }[] | null) ?? []).map((o) => o.item_key),
+  );
+  const eq = (equipped.data as {
+    equipped_frame: string | null;
+    equipped_title: string | null;
+    equipped_color: string | null;
+  } | null) ?? null;
+  const equippedSet = new Set(
+    [eq?.equipped_frame, eq?.equipped_title, eq?.equipped_color].filter(
+      (k): k is string => Boolean(k),
+    ),
+  );
+
+  return ((items as ShopItemRow[] | null) ?? []).map((i) => ({
+    key: i.key,
+    kind: i.kind,
+    name: i.name,
+    description: i.description,
+    price: i.price,
+    owned: ownedSet.has(i.key),
+    equipped: equippedSet.has(i.key),
+  }));
+}
+
+/** Owned badge item keys (for profile display). */
+export async function getMyBadges(): Promise<string[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from("user_items")
+    .select("item_key, shop_items!inner(kind)")
+    .eq("user_id", user.id)
+    .eq("shop_items.kind", "badge");
+  return ((data as { item_key: string }[] | null) ?? []).map((r) => r.item_key);
+}
+
+/** Keys of achievements the user has unlocked. */
+export async function getMyAchievementKeys(): Promise<string[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .from("user_achievements")
+    .select("key")
+    .eq("user_id", user.id);
+  return ((data as { key: string }[] | null) ?? []).map((r) => r.key);
+}
+
+/** Whether today's daily bonus is still claimable (UTC day). */
+export async function canClaimDaily(): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const day = new Date().toISOString().slice(0, 10);
+  const { data } = await supabase
+    .from("coin_ledger")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("reason", "daily")
+    .eq("ref", day)
+    .limit(1);
+  return !(data && data.length > 0);
+}
+
+/** Recent coin ledger entries (newest first). */
+export async function getMyCoinHistory(limit = 8): Promise<CoinEntry[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .from("coin_ledger")
+    .select("amount, reason, ref, created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return (
+    (data as {
+      amount: number;
+      reason: string;
+      ref: string;
+      created_at: string;
+    }[] | null) ?? []
+  ).map((r) => ({
+    amount: r.amount,
+    reason: r.reason,
+    ref: r.ref,
+    createdAt: r.created_at,
   }));
 }

@@ -20,6 +20,7 @@ export default async function AppLayout({
           <ProfileAvatar
             username={user?.username ?? "?"}
             avatarUrl={user?.avatarUrl}
+            frameKey={user?.equippedFrame}
           />
         </div>
       </header>

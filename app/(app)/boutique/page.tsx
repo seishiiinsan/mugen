@@ -1,11 +1,77 @@
-import { ComingSoon } from "../_components/coming-soon";
+import { redirect } from "next/navigation";
+import { canClaimDaily, getCurrentUser, getShopItems } from "@/lib/data";
+import { DAILY_BONUS } from "@/lib/domain/economy";
+import type { ShopItem } from "@/lib/domain/types";
+import { CoinIcon, ShopIcon } from "../_components/icons";
+import { DailyBonus } from "./_components/daily-bonus";
+import { ShopItemCard } from "./_components/shop-item-card";
 
-export default function BoutiquePage() {
+const SECTIONS: { kind: ShopItem["kind"]; label: string }[] = [
+  { kind: "frame", label: "Cadres d'avatar" },
+  { kind: "color", label: "Couleurs de pseudo" },
+  { kind: "title", label: "Titres" },
+];
+
+export default async function BoutiquePage() {
+  const [me, items, claimable] = await Promise.all([
+    getCurrentUser(),
+    getShopItems(),
+    canClaimDaily(),
+  ]);
+  if (!me) redirect("/login");
+
   return (
-    <ComingSoon
-      title="Boutique"
-      description="Cosmétiques pour l'avatar, cadres et badges premium — purement décoratifs, sans avantage compétitif."
-      phase="Phase 2"
-    />
+    <section>
+      <header className="mb-5">
+        <div className="flex items-center gap-2.5">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent/10 text-accent">
+            <ShopIcon className="size-5" />
+          </span>
+          <div className="flex-1">
+            <h1 className="text-xl font-semibold tracking-tight">Boutique</h1>
+            <p className="text-sm text-muted">
+              Cosmétiques uniquement — aucun avantage en jeu.
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 font-mono text-sm font-semibold tabular-nums">
+            <CoinIcon className="size-4 text-accent" />
+            {me.coins}
+          </span>
+        </div>
+      </header>
+
+      <div className="mb-6">
+        <DailyBonus claimable={claimable} amount={DAILY_BONUS} />
+      </div>
+
+      {items.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">
+          Catalogue indisponible.
+        </p>
+      ) : (
+        <div className="space-y-6">
+          {SECTIONS.map(({ kind, label }) => {
+            const group = items.filter((i) => i.kind === kind);
+            if (group.length === 0) return null;
+            return (
+              <div key={kind}>
+                <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-faint">
+                  {label}
+                </h2>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {group.map((item) => (
+                    <ShopItemCard
+                      key={item.key}
+                      item={item}
+                      affordable={me.coins >= item.price}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }

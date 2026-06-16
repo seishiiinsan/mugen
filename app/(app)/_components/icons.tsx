@@ -12,6 +12,15 @@ const base = {
   "aria-hidden": true,
 };
 
+export function CoinIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5.5" />
+    </svg>
+  );
+}
+
 export function MatchesIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>
