@@ -4,7 +4,7 @@ import { getFixture, getMyBoostStock, getPredictionForFixture } from "@/lib/data
 import { isPredictionOpen, lockTime } from "@/lib/domain/predictions";
 import { SCORING_RULES } from "@/lib/domain/scoring";
 import { BOOSTS, leaderboardMonth } from "@/lib/domain/boosts";
-import { scoreFull, type FullScore } from "@/lib/domain/markets";
+import { isScorerHit, scoreFull, type FullScore } from "@/lib/domain/markets";
 import type { BoostType, ScorerPick } from "@/lib/domain/types";
 import { fetchMatchExtras } from "@/lib/bzzoiro/match-extras";
 import { formatKickoff, formatMatchDay, formatTime } from "@/lib/ui/format";
@@ -64,9 +64,17 @@ export default async function FixturePage(
   }
 
   // Actual scorers (own goals excluded) for settling the displayed result.
-  const actualScorerIds = extras.incidents
-    .filter((i) => i.kind === "goal" && i.detail !== "ownGoal" && i.playerId != null)
+  // Picks made from the predicted lineup carry ids from a different id-space
+  // than this feed, so we also match by name (see markets.isScorerHit).
+  const realGoals = extras.incidents.filter(
+    (i) => i.kind === "goal" && i.detail !== "ownGoal",
+  );
+  const actualScorerIds = realGoals
+    .filter((i) => i.playerId != null)
     .map((i) => i.playerId as number);
+  const actualScorerNames = realGoals
+    .map((i) => i.player)
+    .filter((n): n is string => typeof n === "string" && n.length > 0);
 
   const result: FullScore | null =
     settled && prediction
@@ -76,7 +84,11 @@ export default async function FixturePage(
           actual: fixture.score!,
           boost: prediction.boost,
           scorers: prediction.scorers,
-          outcome: { score: fixture.score!, scorerIds: actualScorerIds },
+          outcome: {
+            score: fixture.score!,
+            scorerIds: actualScorerIds,
+            scorerNames: actualScorerNames,
+          },
         })
       : null;
 
@@ -113,6 +125,7 @@ export default async function FixturePage(
       prediction={prediction}
       actual={fixture.score}
       actualScorerIds={actualScorerIds}
+      actualScorerNames={actualScorerNames}
       settled={settled}
       result={result}
     />
@@ -189,6 +202,7 @@ function ResultCard({
   prediction,
   actual,
   actualScorerIds,
+  actualScorerNames,
   settled,
   result,
 }: {
@@ -201,6 +215,7 @@ function ResultCard({
   } | null;
   actual: { home: number; away: number } | null;
   actualScorerIds: number[];
+  actualScorerNames: string[];
   settled: boolean;
   result: FullScore | null;
 }) {
@@ -220,7 +235,11 @@ function ResultCard({
     result != null
       ? SCORING_RULES.find((r) => r.points === result.basePoints)?.label
       : null;
-  const scored = new Set(actualScorerIds);
+  const outcome = {
+    score: actual ?? { home: 0, away: 0 },
+    scorerIds: actualScorerIds,
+    scorerNames: actualScorerNames,
+  };
 
   return (
     <div className="space-y-3 rounded-xl border border-border bg-surface p-5">
@@ -254,8 +273,9 @@ function ResultCard({
         <div className="flex flex-wrap items-center gap-1.5 border-t border-border pt-3 text-xs">
           <span className="text-faint">Buteurs</span>
           {scorers.map((s) => {
-            const hit = settled && scored.has(s.id);
-            const miss = settled && !scored.has(s.id);
+            const didScore = isScorerHit(s, outcome);
+            const hit = settled && didScore;
+            const miss = settled && !didScore;
             return (
               <span
                 key={s.id}

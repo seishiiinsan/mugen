@@ -36,6 +36,13 @@ export interface MarketOutcome {
   score: Score;
   /** Player ids that scored a real goal (own goals excluded). */
   scorerIds: number[];
+  /**
+   * Names of the real scorers. The picker captures players from the *predicted*
+   * lineup, whose ids belong to a different id-space than the match incidents
+   * feed, so an id match alone misses correct picks. Name is the reliable
+   * fallback (both feeds spell players the same, e.g. "K. Mbappé").
+   */
+  scorerNames?: string[];
 }
 
 export interface MarketScore {
@@ -44,17 +51,39 @@ export interface MarketScore {
   misses: number;
 }
 
+/** Normalize a player name for cross-feed comparison (case, accents, spacing). */
+export function normalizeScorerName(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Did a pick actually score? Matches by id first, then by normalized name
+ * (covers picks taken from the predicted lineup, whose ids differ from the
+ * incidents feed). Single source of truth for both scoring and the UI recap.
+ */
+export function isScorerHit(pick: ScorerPick, outcome: MarketOutcome): boolean {
+  if (outcome.scorerIds.includes(pick.id)) return true;
+  const target = normalizeScorerName(pick.name);
+  return (outcome.scorerNames ?? []).some(
+    (n) => normalizeScorerName(n) === target,
+  );
+}
+
 /** Score the goalscorer picks against the actual scorers. */
 export function scoreScorers(
   picks: ScorerPick[],
   outcome: MarketOutcome,
 ): MarketScore {
-  const scored = new Set(outcome.scorerIds);
   let points = 0;
   let hits = 0;
   let misses = 0;
   for (const pick of picks) {
-    if (scored.has(pick.id)) {
+    if (isScorerHit(pick, outcome)) {
       points += scorerHitPoints(pick.position);
       hits++;
     } else {
