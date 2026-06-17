@@ -4,7 +4,11 @@ import { refresh } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getMyNotifications, searchUsers } from "@/lib/data";
-import type { NotificationItem, UserSearchResult } from "@/lib/domain/types";
+import type {
+  ActionResult,
+  NotificationItem,
+  UserSearchResult,
+} from "@/lib/domain/types";
 
 export interface SearchState {
   query: string;
@@ -21,38 +25,44 @@ export async function searchUsersAction(
   return { query, results: await searchUsers(query) };
 }
 
-/** Run an RPC then refresh the router so server-rendered lists update. */
+/** Run an RPC, refresh the router, and return a toast-ready result. */
 async function rpcRefresh(
   fn: string,
   args: Record<string, unknown>,
-): Promise<void> {
-  if (!isSupabaseConfigured()) return;
+  success: string,
+): Promise<ActionResult> {
+  if (!isSupabaseConfigured()) return { ok: false, message: "Indisponible." };
   const supabase = await createClient();
   const { error } = await supabase.rpc(fn, args);
-  if (error) console.error(`[${fn}]`, error);
+  if (error) {
+    console.error(`[${fn}]`, error);
+    return { ok: false, message: "Une erreur est survenue." };
+  }
   refresh();
+  return { ok: true, message: success };
 }
 
-export async function sendFriendRequest(targetId: string): Promise<void> {
-  await rpcRefresh("send_friend_request", { p_target: targetId });
+export async function sendFriendRequest(targetId: string): Promise<ActionResult> {
+  return rpcRefresh("send_friend_request", { p_target: targetId }, "Demande envoyée.");
 }
 
 export async function respondFriendRequest(
   requesterId: string,
   accept: boolean,
-): Promise<void> {
-  await rpcRefresh("respond_friend_request", {
-    p_requester: requesterId,
-    p_accept: accept,
-  });
+): Promise<ActionResult> {
+  return rpcRefresh(
+    "respond_friend_request",
+    { p_requester: requesterId, p_accept: accept },
+    accept ? "Demande acceptée." : "Demande refusée.",
+  );
 }
 
-export async function cancelFriendRequest(targetId: string): Promise<void> {
-  await rpcRefresh("cancel_friend_request", { p_target: targetId });
+export async function cancelFriendRequest(targetId: string): Promise<ActionResult> {
+  return rpcRefresh("cancel_friend_request", { p_target: targetId }, "Demande annulée.");
 }
 
-export async function removeFriend(otherId: string): Promise<void> {
-  await rpcRefresh("remove_friend", { p_other: otherId });
+export async function removeFriend(otherId: string): Promise<ActionResult> {
+  return rpcRefresh("remove_friend", { p_other: otherId }, "Ami retiré.");
 }
 
 /** Load notifications for the bell panel and mark them read in one round-trip. */

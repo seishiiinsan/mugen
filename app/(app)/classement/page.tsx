@@ -1,8 +1,13 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser, getMonthlyLeaderboard } from "@/lib/data";
 import type { LeaderboardEntry } from "@/lib/domain/types";
 import { CrownIcon } from "../_components/icons";
 import { UserAvatar } from "../_components/user-avatar";
+
+/** Link to a player's public profile. */
+const profileHref = (username: string) =>
+  `/joueur/${encodeURIComponent(username)}`;
 
 /** Visual tier for a podium slot, keyed by display position (0 = top). */
 const PODIUM = [
@@ -49,7 +54,7 @@ function PodiumSpot({
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center">
       {/* Avatar + crown for the winner */}
-      <div className="relative mb-2">
+      <Link href={profileHref(entry.username)} className="relative mb-2 block">
         {tier === 0 && (
           <CrownIcon className="absolute -top-5 left-1/2 h-5 w-5 -translate-x-1/2 text-gold" />
         )}
@@ -64,11 +69,14 @@ function PodiumSpot({
         >
           {entry.rank}
         </span>
-      </div>
+      </Link>
 
-      <span className="mt-1 max-w-full truncate text-sm font-semibold">
+      <Link
+        href={profileHref(entry.username)}
+        className="mt-1 max-w-full truncate text-sm font-semibold hover:text-accent"
+      >
         {entry.username}
-      </span>
+      </Link>
       {isMe && <span className="text-xs text-accent">vous</span>}
       <span className="font-mono text-sm font-semibold tabular-nums">
         {entry.points}
@@ -96,15 +104,22 @@ function RankRow({ entry, isMe }: { entry: LeaderboardEntry; isMe: boolean }) {
       <span className="w-7 shrink-0 text-center font-mono text-sm font-semibold tabular-nums text-muted">
         {entry.rank}
       </span>
-      <UserAvatar
-        username={entry.username}
-        avatarUrl={entry.avatarUrl}
-        sizes="36px"
-        className="size-9 rounded-full border border-border bg-surface-2 text-sm font-semibold"
-      />
+      <Link href={profileHref(entry.username)} className="shrink-0">
+        <UserAvatar
+          username={entry.username}
+          avatarUrl={entry.avatarUrl}
+          sizes="36px"
+          className="size-9 rounded-full border border-border bg-surface-2 text-sm font-semibold"
+        />
+      </Link>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate font-medium">{entry.username}</span>
+          <Link
+            href={profileHref(entry.username)}
+            className="truncate font-medium hover:text-accent"
+          >
+            {entry.username}
+          </Link>
           {isMe && <span className="shrink-0 text-xs text-accent">vous</span>}
         </div>
         <div className="text-xs text-faint">

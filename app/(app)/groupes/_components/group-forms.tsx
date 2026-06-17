@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useActionToast } from "../../_components/toast";
 import { createGroup, joinGroup, type GroupFormState } from "../actions";
 
 export function GroupForms() {
@@ -12,6 +13,8 @@ export function GroupForms() {
     GroupFormState,
     FormData
   >(joinGroup, {});
+  useActionToast(createState);
+  useActionToast(joinState);
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">

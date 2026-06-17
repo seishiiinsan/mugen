@@ -10,6 +10,7 @@ import {
 } from "@/lib/domain/markets";
 import type { ScorerPick } from "@/lib/domain/types";
 import { TeamCrest } from "../../_components/team-crest";
+import { useActionToast } from "../../_components/toast";
 import { submitPrediction, type PredictionFormState } from "./actions";
 
 export interface ScorerOption {
@@ -52,6 +53,7 @@ export function PredictionForm({
     submitPrediction,
     {},
   );
+  useActionToast(state, "Pronostic enregistré.");
 
   const start = state.values ?? initial ?? { home: 0, away: 0 };
   const [home, setHome] = useState(start.home);

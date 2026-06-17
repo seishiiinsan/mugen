@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useActionState } from "react";
 import type { ReportCategory } from "@/lib/domain/types";
+import { useActionToast } from "../_components/toast";
 import { submitReport, type ReportActionState } from "./actions";
 
 const CATEGORIES: { value: ReportCategory; label: string; hint: string }[] = [
@@ -17,6 +18,7 @@ export function ReportForm() {
     {},
   );
   const formRef = useRef<HTMLFormElement>(null);
+  useActionToast(state, "Merci, ton signalement a été envoyé.");
 
   // Clear the fields (incl. category radios) after a successful submission.
   useEffect(() => {
