@@ -14,10 +14,12 @@ export function ShopTabs({
   tabs,
   balance,
   friends,
+  friendOwned,
 }: {
   tabs: Tab[];
   balance: number;
   friends: FriendSummary[];
+  friendOwned: Record<string, string[]>;
 }) {
   const [active, setActive] = useState(tabs[0]?.id ?? "");
   const current = tabs.find((t) => t.id === active);
@@ -57,6 +59,7 @@ export function ShopTabs({
               item={item}
               balance={balance}
               friends={friends}
+              friendOwned={friendOwned}
             />
           ))}
         </div>

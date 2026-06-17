@@ -13,11 +13,13 @@ export function GiftButton({
   itemName,
   price,
   friends,
+  friendOwned = {},
 }: {
   itemKey: string;
   itemName: string;
   price: number;
   friends: FriendSummary[];
+  friendOwned?: Record<string, string[]>;
 }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
@@ -74,23 +76,32 @@ export function GiftButton({
             </span>
           </div>
           <ul className="max-h-60 overflow-y-auto p-1">
-            {friends.map((f) => (
-              <li key={f.id}>
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => gift(f.id)}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-surface-2 disabled:opacity-60"
-                >
-                  <UserAvatar
-                    username={f.username}
-                    avatarUrl={f.avatarUrl}
-                    className="size-7 rounded-full border border-border bg-surface-2 text-xs font-semibold"
-                  />
-                  <span className="truncate">{f.username}</span>
-                </button>
-              </li>
-            ))}
+            {friends.map((f) => {
+              const owns = (friendOwned[f.id] ?? []).includes(itemKey);
+              return (
+                <li key={f.id}>
+                  <button
+                    type="button"
+                    disabled={pending || owns}
+                    onClick={() => gift(f.id)}
+                    title={owns ? "Possède déjà cet article" : undefined}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors enabled:hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <UserAvatar
+                      username={f.username}
+                      avatarUrl={f.avatarUrl}
+                      className="size-7 rounded-full border border-border bg-surface-2 text-xs font-semibold"
+                    />
+                    <span className="truncate">{f.username}</span>
+                    {owns && (
+                      <span className="ml-auto shrink-0 text-[10px] font-medium uppercase tracking-wide text-faint">
+                        déjà possédé
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

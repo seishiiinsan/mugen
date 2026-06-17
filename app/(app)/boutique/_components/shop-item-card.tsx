@@ -27,10 +27,12 @@ export function ShopItemCard({
   item,
   balance,
   friends = [],
+  friendOwned = {},
 }: {
   item: ShopItem;
   balance: number;
   friends?: FriendSummary[];
+  friendOwned?: Record<string, string[]>;
 }) {
   const [state, buy, buying] = useActionState<ShopActionState, FormData>(
     purchaseItem,
@@ -133,6 +135,7 @@ export function ShopItemCard({
             itemName={item.name}
             price={item.price}
             friends={friends}
+            friendOwned={friendOwned}
           />
         )}
       </div>

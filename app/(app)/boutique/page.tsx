@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import {
   canClaimDaily,
   getCurrentUser,
+  getFriendsOwnedItems,
   getMyFriends,
   getMyOwnedItems,
   getShopItems,
@@ -12,12 +13,13 @@ import { DailyBonus } from "./_components/daily-bonus";
 import { ShopTabs } from "./_components/shop-tabs";
 
 export default async function BoutiquePage() {
-  const [me, items, claimable, owned, friends] = await Promise.all([
+  const [me, items, claimable, owned, friends, friendOwned] = await Promise.all([
     getCurrentUser(),
     getShopItems(),
     canClaimDaily(),
     getMyOwnedItems(),
     getMyFriends(),
+    getFriendsOwnedItems(),
   ]);
   if (!me) redirect("/login");
 
@@ -67,7 +69,12 @@ export default async function BoutiquePage() {
         <DailyBonus claimable={claimable} amount={DAILY_BONUS} />
       </div>
 
-      <ShopTabs tabs={tabs} balance={me.coins} friends={friends} />
+      <ShopTabs
+        tabs={tabs}
+        balance={me.coins}
+        friends={friends}
+        friendOwned={friendOwned}
+      />
     </section>
   );
 }

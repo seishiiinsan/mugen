@@ -818,6 +818,22 @@ export async function getMyOwnedItems(): Promise<ShopItem[]> {
     }));
 }
 
+/** Map of friend id → item keys they own, for the boutique gift picker. */
+export async function getFriendsOwnedItems(): Promise<Record<string, string[]>> {
+  if (!isSupabaseConfigured()) return {};
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("friends_owned_items");
+  if (error) {
+    console.error("[getFriendsOwnedItems]", error);
+    return {};
+  }
+  const map: Record<string, string[]> = {};
+  for (const r of (data as { friend_id: string; item_key: string }[] | null) ?? []) {
+    (map[r.friend_id] ??= []).push(r.item_key);
+  }
+  return map;
+}
+
 /** Owned badge with how many times it was earned (≥1) — for profile display. */
 export interface OwnedBadge {
   key: string;
