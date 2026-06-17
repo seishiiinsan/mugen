@@ -6,7 +6,10 @@ import "server-only";
 import type { Fixture } from "@/lib/domain/types";
 import { isBzzoiroConfigured } from "@/lib/bzzoiro/env";
 import * as bzzoiro from "@/lib/bzzoiro/fixtures";
-import { fetchScorerPlayerIds } from "@/lib/bzzoiro/match-extras";
+import {
+  fetchScorers as fetchScorersExtra,
+  type MatchScorers,
+} from "@/lib/bzzoiro/match-extras";
 
 export function isSportsApiConfigured(): boolean {
   return isBzzoiroConfigured();
@@ -27,7 +30,7 @@ export function fetchFixtureById(id: number): Promise<Fixture | null> {
   return bzzoiro.fetchFixtureById(id);
 }
 
-/** Player ids that scored a real goal (own goals excluded) — for settling. */
-export function fetchScorerIds(id: number): Promise<number[]> {
-  return fetchScorerPlayerIds(id);
+/** Real scorers (ids + names, own goals excluded) — for settling/display. */
+export function fetchScorers(id: number): Promise<MatchScorers> {
+  return fetchScorersExtra(id);
 }

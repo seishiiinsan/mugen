@@ -253,25 +253,32 @@ async function fetchIncidents(id: number): Promise<Incident[]> {
  * settling goalscorer predictions. Empty on error or if no scorer ids are
  * available.
  */
-export async function fetchScorerPlayerIds(id: number): Promise<number[]> {
-  if (!isBzzoiroConfigured()) return [];
+/** Real scorers of a match (own goals excluded): ids and display names. */
+export interface MatchScorers {
+  ids: number[];
+  names: string[];
+}
+
+export async function fetchScorers(id: number): Promise<MatchScorers> {
+  if (!isBzzoiroConfigured()) return { ids: [], names: [] };
   try {
     const raw = await bzzoiroGet<{ incidents?: RawIncident[] }>(
       `/api/v2/events/${id}/incidents/`,
       {},
       60,
     );
-    const ids = (raw.incidents ?? [])
-      .filter(
-        (i) =>
-          i.type === "goal" &&
-          i.goal_type !== "ownGoal" &&
-          typeof i.player_id === "number",
-      )
+    const goals = (raw.incidents ?? []).filter(
+      (i) => i.type === "goal" && i.goal_type !== "ownGoal",
+    );
+    const ids = goals
+      .filter((i) => typeof i.player_id === "number")
       .map((i) => i.player_id as number);
-    return [...new Set(ids)];
+    const names = goals
+      .map((i) => i.player)
+      .filter((n): n is string => typeof n === "string" && n.length > 0);
+    return { ids: [...new Set(ids)], names: [...new Set(names)] };
   } catch {
-    return [];
+    return { ids: [], names: [] };
   }
 }
 

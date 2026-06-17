@@ -2,7 +2,7 @@ import "server-only";
 
 import {
   fetchFixtureById,
-  fetchScorerIds,
+  fetchScorers,
   isSportsApiConfigured,
 } from "@/lib/sports";
 import { scoreFull } from "@/lib/domain/markets";
@@ -91,8 +91,8 @@ export async function settlePredictions(): Promise<SettleResult> {
     fixturesSettled++;
 
     // Actual goalscorers (for goalscorer markets); empty if unavailable.
-    const scorerIds = await fetchScorerIds(fixtureId);
-    const outcome = { score: fixture.score, scorerIds };
+    const { ids: scorerIds, names: scorerNames } = await fetchScorers(fixtureId);
+    const outcome = { score: fixture.score, scorerIds, scorerNames };
 
     const { data: preds } = await admin
       .from("predictions")
