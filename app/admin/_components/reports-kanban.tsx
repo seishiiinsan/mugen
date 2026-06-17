@@ -9,7 +9,8 @@ import {
   REPORT_STATUS_META,
   REPORT_STATUS_ORDER,
 } from "@/lib/ui/reports";
-import { setReportNotes } from "../actions";
+import { BadgeIcon } from "@/app/(app)/_components/icons";
+import { grantBugHunter, setReportNotes } from "../actions";
 import { useOptimisticHelper } from "./use-optimistic-reports";
 
 type Filter = ReportCategory | "all";
@@ -218,6 +219,8 @@ function DetailPanel({
   const [notes, setNotes] = useState(report.adminNotes ?? "");
   const [saving, startSave] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [granting, startGrant] = useTransition();
+  const [badgeMsg, setBadgeMsg] = useState<string | null>(null);
   const cat = REPORT_CATEGORY_META[report.category];
 
   const save = () => {
@@ -225,6 +228,15 @@ function DetailPanel({
     startSave(async () => {
       await setReportNotes(report.id, notes);
       setSaved(true);
+    });
+  };
+
+  const grantBadge = () => {
+    if (!report.userId) return;
+    setBadgeMsg(null);
+    startGrant(async () => {
+      const r = await grantBugHunter(report.userId!);
+      setBadgeMsg(r.message);
     });
   };
 
@@ -318,6 +330,27 @@ function DetailPanel({
             </button>
           </div>
         </div>
+
+        {/* Reward — grant the Bug hunter badge to the reporter */}
+        {report.userId && (
+          <div className="mt-4 border-t border-border pt-4">
+            <div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-faint">
+              Récompense
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={grantBadge}
+                disabled={granting}
+                className="press inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:border-border-strong disabled:opacity-60"
+              >
+                <BadgeIcon className="size-4 text-accent" />
+                {granting ? "…" : "Attribuer le badge Bug hunter"}
+              </button>
+              {badgeMsg && <span className="text-xs text-muted">{badgeMsg}</span>}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

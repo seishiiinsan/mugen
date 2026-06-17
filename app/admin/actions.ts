@@ -1,14 +1,45 @@
 "use server";
 
 import { refresh } from "next/cache";
-import type { ReportStatus } from "@/lib/domain/types";
-import { getIsAdmin } from "@/lib/data";
+import type { AdminPlayerDetail, ReportStatus } from "@/lib/domain/types";
+import { getAdminPlayerDetail, getIsAdmin } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 export interface AdminActionState {
   error?: string;
   ok?: boolean;
+}
+
+/** Grant the "Bug hunter" badge to a reporter (no-op if already owned). */
+export async function grantBugHunter(
+  userId: string,
+): Promise<{ ok: boolean; message: string }> {
+  if (!isSupabaseConfigured()) return { ok: false, message: "Indisponible." };
+  if (!(await getIsAdmin())) return { ok: false, message: "Non autorisé." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_grant_badge", {
+    p_user: userId,
+    p_key: "badge_bughunter",
+  });
+  if (error) {
+    console.error("[grantBugHunter]", error);
+    return { ok: false, message: "Échec de l'attribution." };
+  }
+  refresh();
+  return data === false
+    ? { ok: false, message: "Possède déjà le badge Bug hunter." }
+    : { ok: true, message: "Badge Bug hunter attribué 🐛" };
+}
+
+/** Load a player's full account dump for the admin modal. */
+export async function loadPlayerDetail(
+  id: string,
+): Promise<AdminPlayerDetail | null> {
+  if (!isSupabaseConfigured()) return null;
+  if (!(await getIsAdmin())) return null;
+  return getAdminPlayerDetail(id);
 }
 
 const STATUSES: ReportStatus[] = ["new", "in_progress", "done", "rejected"];

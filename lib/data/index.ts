@@ -24,6 +24,8 @@ import type {
   FriendRequest,
   FriendSummary,
   Group,
+  AdminPlayer,
+  AdminPlayerDetail,
   LeaderboardEntry,
   RankedPlayer,
   NotificationItem,
@@ -1024,6 +1026,59 @@ export async function getAdminReports(): Promise<Report[]> {
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   }));
+}
+
+interface AdminPlayerRow {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  coins: number;
+  is_admin: boolean;
+  created_at: string;
+  lifetime_points: number;
+}
+
+/** All players for the admin "Joueurs" tab (admin-gated RPC). */
+export async function getAdminPlayers(): Promise<AdminPlayer[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_list_players");
+  if (error) {
+    console.error("[getAdminPlayers]", error);
+    return [];
+  }
+  return ((data as AdminPlayerRow[] | null) ?? []).map((r) => ({
+    id: r.id,
+    username: r.username,
+    avatarUrl: r.avatar_url ?? undefined,
+    coins: r.coins,
+    isAdmin: r.is_admin,
+    createdAt: r.created_at,
+    lifetimePoints: Number(r.lifetime_points ?? 0),
+  }));
+}
+
+/** Full account dump for one player (admin-gated). XP/level derived app-side. */
+export async function getAdminPlayerDetail(
+  id: string,
+): Promise<AdminPlayerDetail | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_player_detail", {
+    p_user: id,
+  });
+  if (error || !data) {
+    if (error) console.error("[getAdminPlayerDetail]", error);
+    return null;
+  }
+  const d = data as Omit<AdminPlayerDetail, "totalXp" | "level">;
+  const unlocked = new Set(d.achievements ?? []);
+  const achXp = ACHIEVEMENTS.filter((a) => unlocked.has(a.key)).reduce(
+    (sum, a) => sum + a.xp,
+    0,
+  );
+  const totalXp = Number(d.lifetime_points) * XP_PER_POINT + achXp;
+  return { ...d, totalXp, level: levelFromXp(totalXp).level };
 }
 
 interface ChangelogRow {

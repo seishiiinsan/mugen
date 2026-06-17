@@ -144,6 +144,52 @@ export interface Group {
   createdAt: string;
 }
 
+/** A row in the admin "Joueurs" list. */
+export interface AdminPlayer {
+  id: string;
+  username: string;
+  avatarUrl?: string;
+  coins: number;
+  isAdmin: boolean;
+  createdAt: string;
+  lifetimePoints: number;
+}
+
+/** Full account dump for the admin player modal — "vraiment tout". */
+export interface AdminPlayerDetail {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  created_at: string;
+  is_admin: boolean;
+  coins: number;
+  predictions_visibility: string;
+  equipped: {
+    frame: string | null;
+    title: string | null;
+    color: string | null;
+    badge: string | null;
+  };
+  lifetime_points: number;
+  predictions_total: number;
+  predictions_settled: number;
+  exact_scores: number;
+  friends_count: number;
+  achievements: string[];
+  items: { key: string; kind: string; name: string; count: number }[];
+  reports: {
+    id: string;
+    category: string;
+    title: string;
+    status: string;
+    created_at: string;
+  }[];
+  ledger: { amount: number; reason: string; ref: string; created_at: string }[];
+  /** Derived app-side from lifetime points + achievement XP. */
+  totalXp: number;
+  level: number;
+}
+
 /** A player-submitted report (bug / suggestion / other). */
 export type ReportCategory = "bug" | "suggestion" | "other";
 export type ReportStatus = "new" | "in_progress" | "done" | "rejected";
