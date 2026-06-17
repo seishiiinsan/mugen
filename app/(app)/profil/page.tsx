@@ -392,14 +392,14 @@ export default async function ProfilPage() {
 
         {badges.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {badges.map((key) => {
+            {badges.map(({ key, count }) => {
               const meta = BADGE_META[key];
               if (!meta) return null;
               return (
                 <span
                   key={key}
-                  title={meta.label}
-                  className={`grid size-7 place-items-center rounded-full border text-sm ${
+                  title={count > 1 ? `${meta.label} ×${count}` : meta.label}
+                  className={`relative grid size-7 place-items-center rounded-full border text-sm ${
                     me.equippedBadge === key
                       ? "border-accent bg-accent/10"
                       : "border-border bg-surface-2"
@@ -407,6 +407,11 @@ export default async function ProfilPage() {
                   aria-hidden
                 >
                   {meta.emoji}
+                  {count > 1 && (
+                    <span className="absolute -right-1 -top-1 grid min-w-3.5 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-accent-fg">
+                      ×{count}
+                    </span>
+                  )}
                 </span>
               );
             })}

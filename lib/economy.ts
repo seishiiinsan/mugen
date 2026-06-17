@@ -138,12 +138,12 @@ export async function payoutMonthIfDue(admin: Admin): Promise<void> {
     }
     const badge = monthlyRewardBadge(rank);
     if (badge) {
-      await admin
-        .from("user_items")
-        .upsert(
-          { user_id: s.userId, item_key: badge },
-          { onConflict: "user_id,item_key", ignoreDuplicates: true },
-        );
+      // Repeatable: a second gold win bumps the badge's count (shown as "×2")
+      // rather than inserting a duplicate row.
+      await admin.rpc("award_monthly_badge", {
+        p_user: s.userId,
+        p_key: badge,
+      });
     }
   }
 }

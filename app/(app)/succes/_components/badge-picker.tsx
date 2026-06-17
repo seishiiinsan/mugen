@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { BADGE_META } from "@/lib/domain/cosmetics";
+import type { OwnedBadge } from "@/lib/data";
 import { useToast } from "../../_components/toast";
 import { equipItem } from "../../boutique/actions";
 
@@ -13,7 +14,7 @@ export function BadgePicker({
   owned,
   equipped,
 }: {
-  owned: string[];
+  owned: OwnedBadge[];
   equipped: string | null;
 }) {
   const [pending, start] = useTransition();
@@ -35,7 +36,7 @@ export function BadgePicker({
 
   return (
     <div className="flex flex-wrap gap-2">
-      {owned.map((key) => {
+      {owned.map(({ key, count }) => {
         const meta = BADGE_META[key];
         if (!meta) return null;
         const active = equipped === key;
@@ -56,6 +57,11 @@ export function BadgePicker({
               {meta.emoji}
             </span>
             {meta.label}
+            {count > 1 && (
+              <span className="font-mono text-xs font-bold tabular-nums text-accent">
+                ×{count}
+              </span>
+            )}
             {active && <span className="text-xs">· en vitrine</span>}
           </button>
         );

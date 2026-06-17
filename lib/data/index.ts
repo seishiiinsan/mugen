@@ -727,8 +727,14 @@ export async function getMyGrantedItems(): Promise<ShopItem[]> {
   }));
 }
 
-/** Owned badge item keys (for profile display). */
-export async function getMyBadges(): Promise<string[]> {
+/** Owned badge with how many times it was earned (≥1) — for profile display. */
+export interface OwnedBadge {
+  key: string;
+  count: number;
+}
+
+/** Owned badges (key + earned count) for profile display. */
+export async function getMyBadges(): Promise<OwnedBadge[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
   const {
@@ -738,10 +744,12 @@ export async function getMyBadges(): Promise<string[]> {
 
   const { data } = await supabase
     .from("user_items")
-    .select("item_key, shop_items!inner(kind)")
+    .select("item_key, count, shop_items!inner(kind)")
     .eq("user_id", user.id)
     .eq("shop_items.kind", "badge");
-  return ((data as { item_key: string }[] | null) ?? []).map((r) => r.item_key);
+  return ((data as { item_key: string; count: number | null }[] | null) ?? []).map(
+    (r) => ({ key: r.item_key, count: r.count ?? 1 }),
+  );
 }
 
 /** Current level, derived from lifetime points (×XP_PER_POINT) + achievement XP. */
