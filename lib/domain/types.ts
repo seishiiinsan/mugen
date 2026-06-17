@@ -86,6 +86,18 @@ export interface LeaderboardEntry {
   avatarUrl?: string;
 }
 
+/** A ranked player on an all-time board (coins or XP) — no rewards, no reset. */
+export interface RankedPlayer {
+  rank: number;
+  userId: string;
+  username: string;
+  avatarUrl?: string;
+  /** The ranked metric: coin balance, or total lifetime XP. */
+  value: number;
+  /** Level, populated only for the XP board. */
+  level?: number;
+}
+
 export interface UserProfile {
   id: string;
   username: string;

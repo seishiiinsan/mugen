@@ -25,6 +25,7 @@ import type {
   FriendSummary,
   Group,
   LeaderboardEntry,
+  RankedPlayer,
   NotificationItem,
   Prediction,
   ProfileOverview,
@@ -473,6 +474,75 @@ export async function getMyMonthlyStats(): Promise<MonthlyStats> {
   return me
     ? { points: me.points, rank: me.rank, exactScores: me.exactScores }
     : { points: 0, rank: null, exactScores: 0 };
+}
+
+/** Standard competition ranking by `value` desc (ties share a rank). */
+function rankByValue(entries: Omit<RankedPlayer, "rank">[]): RankedPlayer[] {
+  const sorted = [...entries].sort(
+    (a, b) => b.value - a.value || a.username.localeCompare(b.username, "fr"),
+  );
+  let rank = 0;
+  let prev = Number.NaN;
+  return sorted.map((e, i) => {
+    if (i === 0 || e.value !== prev) {
+      rank = i + 1;
+      prev = e.value;
+    }
+    return { rank, ...e };
+  });
+}
+
+/** All-time richest players, ranked by coin balance (no rewards, no reset). */
+export async function getCoinsLeaderboard(): Promise<RankedPlayer[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, username, avatar_url, coins");
+  const entries = (
+    (data as { id: string; username: string; avatar_url: string | null; coins: number }[] | null) ??
+    []
+  ).map((p) => ({
+    userId: p.id,
+    username: p.username,
+    avatarUrl: p.avatar_url ?? undefined,
+    value: p.coins ?? 0,
+  }));
+  return rankByValue(entries).slice(0, 100);
+}
+
+/** All-time XP board, ranked by lifetime XP (no rewards, no reset). */
+export async function getXpLeaderboard(): Promise<RankedPlayer[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("xp_standings");
+  if (error) {
+    console.error("[getXpLeaderboard]", error);
+    return [];
+  }
+  type Row = {
+    user_id: string;
+    username: string;
+    avatar_url: string | null;
+    points: number;
+    achievements: string[] | null;
+  };
+  const entries = ((data as Row[] | null) ?? []).map((r) => {
+    const unlocked = new Set(r.achievements ?? []);
+    const achXp = ACHIEVEMENTS.filter((a) => unlocked.has(a.key)).reduce(
+      (sum, a) => sum + a.xp,
+      0,
+    );
+    const xp = Number(r.points) * XP_PER_POINT + achXp;
+    return {
+      userId: r.user_id,
+      username: r.username,
+      avatarUrl: r.avatar_url ?? undefined,
+      value: xp,
+      level: levelFromXp(xp).level,
+    };
+  });
+  return rankByValue(entries).slice(0, 100);
 }
 
 export async function getCurrentUser(): Promise<UserProfile | null> {
