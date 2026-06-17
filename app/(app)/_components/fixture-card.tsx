@@ -82,25 +82,42 @@ export function FixtureCard({
 
       {/* Your prediction */}
       {prediction && (
-        <div className="flex items-center justify-between gap-2 border-t border-border bg-accent/[0.05] px-4 py-2.5">
-          <div className="flex items-center gap-2 text-xs">
-            <PredictionsIcon className="size-3.5 text-accent" />
-            <span className="text-faint">Votre prono</span>
-            <span className="rounded-md bg-accent/10 px-1.5 py-0.5 font-mono font-semibold tabular-nums text-accent">
-              {prediction.home}-{prediction.away}
-            </span>
-            {prediction.boost && (
-              <span title={BOOSTS[prediction.boost].name} aria-label={BOOSTS[prediction.boost].name}>
-                {BOOSTS[prediction.boost].emoji}
+        <div className="border-t border-border bg-accent/[0.05] px-4 py-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs">
+              <PredictionsIcon className="size-3.5 text-accent" />
+              <span className="text-faint">Votre prono</span>
+              <span className="rounded-md bg-accent/10 px-1.5 py-0.5 font-mono font-semibold tabular-nums text-accent">
+                {prediction.home}-{prediction.away}
               </span>
+              {prediction.boost && (
+                <span title={BOOSTS[prediction.boost].name} aria-label={BOOSTS[prediction.boost].name}>
+                  {BOOSTS[prediction.boost].emoji}
+                </span>
+              )}
+            </div>
+            {earnedPoints != null ? (
+              <span className="rounded-full bg-success/10 px-2 py-0.5 font-mono text-xs font-medium text-success">
+                +{earnedPoints}
+              </span>
+            ) : (
+              <span className="text-xs text-faint">En attente</span>
             )}
           </div>
-          {earnedPoints != null ? (
-            <span className="rounded-full bg-success/10 px-2 py-0.5 font-mono text-xs font-medium text-success">
-              +{earnedPoints}
-            </span>
-          ) : (
-            <span className="text-xs text-faint">En attente</span>
+
+          {/* Chosen goalscorers */}
+          {prediction.scorers.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-faint">Buteurs</span>
+              {prediction.scorers.map((s) => (
+                <span
+                  key={s.id}
+                  className="rounded-md border border-border bg-surface px-1.5 py-0.5 text-xs text-muted"
+                >
+                  {s.name}
+                </span>
+              ))}
+            </div>
           )}
         </div>
       )}
