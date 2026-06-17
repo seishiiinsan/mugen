@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  FriendsIcon,
   GroupsIcon,
   MatchesIcon,
   PredictionsIcon,
@@ -11,12 +10,12 @@ import {
   ShopIcon,
 } from "./icons";
 
+// "Amis" lives under the profile now, so it's no longer a top-level tab.
 const TABS = [
   { href: "/matchs", label: "Matchs", Icon: MatchesIcon },
   { href: "/mes-pronostics", label: "Pronostics", Icon: PredictionsIcon },
   { href: "/classement", label: "Classement", Icon: RankingIcon },
   { href: "/groupes", label: "Groupes", Icon: GroupsIcon },
-  { href: "/amis", label: "Amis", Icon: FriendsIcon },
   { href: "/boutique", label: "Boutique", Icon: ShopIcon },
 ] as const;
 

@@ -114,13 +114,28 @@ export default async function ProfilPage() {
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
 
-  // Settle each prediction we can, to derive lived-in stats.
+  // Settle each prediction we can, to derive lived-in stats. `settled` holds the
+  // base result points (drive the tier distribution + hit rate); `credited`
+  // holds the actual points awarded — boost and goalscorers included — straight
+  // from the DB, which is what "Meilleure perf." should reflect.
   const settled: number[] = [];
+  const credited: number[] = [];
   let pending = 0;
   for (const p of predictions) {
     const f = byId.get(p.fixtureId);
     if (f && f.status === "finished" && f.score) {
       settled.push(scorePrediction({ home: p.home, away: p.away }, f.score));
+      // Settled rows carry their credited total; fall back to a boosted recompute
+      // for the rare finished-but-not-yet-settled case.
+      credited.push(
+        p.points ??
+          scoreBoosted({
+            primary: { home: p.home, away: p.away },
+            secondary: p.secondary,
+            actual: f.score,
+            boost: p.boost,
+          }).points,
+      );
     } else {
       pending += 1;
     }
@@ -131,7 +146,7 @@ export default async function ProfilPage() {
   const hitRate = settled.length
     ? Math.round((hits / settled.length) * 100)
     : 0;
-  const best = settled.length ? Math.max(...settled) : 0;
+  const best = credited.length ? Math.max(...credited) : 0;
   const counts = TIERS.map(
     (t) => settled.filter((pts) => pts === t.points).length,
   );
@@ -392,14 +407,14 @@ export default async function ProfilPage() {
 
         {badges.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {badges.map((key) => {
+            {badges.map(({ key, count }) => {
               const meta = BADGE_META[key];
               if (!meta) return null;
               return (
                 <span
                   key={key}
-                  title={meta.label}
-                  className={`grid size-7 place-items-center rounded-full border text-sm ${
+                  title={count > 1 ? `${meta.label} ×${count}` : meta.label}
+                  className={`relative grid size-7 place-items-center rounded-full border text-sm ${
                     me.equippedBadge === key
                       ? "border-accent bg-accent/10"
                       : "border-border bg-surface-2"
@@ -407,6 +422,11 @@ export default async function ProfilPage() {
                   aria-hidden
                 >
                   {meta.emoji}
+                  {count > 1 && (
+                    <span className="absolute -right-1 -top-1 grid min-w-3.5 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-accent-fg">
+                      ×{count}
+                    </span>
+                  )}
                 </span>
               );
             })}

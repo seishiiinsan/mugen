@@ -20,8 +20,8 @@ const HIGHLIGHTS = [
   },
   {
     Icon: CrownIcon,
-    title: "Le top 3 récompensé",
-    text: "Montez sur le podium, repartez avec les lots.",
+    title: "Le top 50 récompensé",
+    text: "Gagnez des pièces, visez le podium et son badge exclusif.",
   },
 ];
 

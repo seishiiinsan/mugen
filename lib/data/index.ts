@@ -671,11 +671,20 @@ export async function getShopItems(): Promise<ShopItem[]> {
   }));
 }
 
+/** Order in which kinds appear in the unified "Possédés" inventory. */
+const OWNED_KIND_ORDER: Record<ShopItem["kind"], number> = {
+  badge: 0,
+  frame: 1,
+  color: 2,
+  title: 3,
+};
+
 /**
- * Owned special items that aren't sold in the shop (granted rewards), excluding
- * badges (those use the showcase). Equippable like normal cosmetics.
+ * Everything the viewer owns — every kind, badges included — for the unified
+ * "Possédés" tab. Each item carries its equipped state and (for badges) how
+ * many times it was earned.
  */
-export async function getMyGrantedItems(): Promise<ShopItem[]> {
+export async function getMyOwnedItems(): Promise<ShopItem[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
   const {
@@ -687,48 +696,66 @@ export async function getMyGrantedItems(): Promise<ShopItem[]> {
     supabase
       .from("user_items")
       .select(
-        "item_key, shop_items!inner(kind, name, description, price, active)",
+        "item_key, count, shop_items!inner(kind, name, description, price, sort)",
       )
-      .eq("user_id", user.id)
-      .eq("shop_items.active", false)
-      .neq("shop_items.kind", "badge"),
+      .eq("user_id", user.id),
     supabase
       .from("profiles")
-      .select("equipped_frame, equipped_title, equipped_color")
+      .select("equipped_frame, equipped_title, equipped_color, equipped_badge")
       .eq("id", user.id)
       .maybeSingle(),
   ]);
 
+  const e = eq as {
+    equipped_frame: string | null;
+    equipped_title: string | null;
+    equipped_color: string | null;
+    equipped_badge: string | null;
+  } | null;
   const equippedSet = new Set(
-    [
-      (eq as { equipped_frame: string | null } | null)?.equipped_frame,
-      (eq as { equipped_title: string | null } | null)?.equipped_title,
-      (eq as { equipped_color: string | null } | null)?.equipped_color,
-    ].filter((k): k is string => Boolean(k)),
+    [e?.equipped_frame, e?.equipped_title, e?.equipped_color, e?.equipped_badge].filter(
+      (k): k is string => Boolean(k),
+    ),
   );
 
   type Row = {
     item_key: string;
+    count: number | null;
     shop_items: {
       kind: ShopItem["kind"];
       name: string;
       description: string | null;
       price: number;
+      sort: number;
     };
   };
-  return ((data as Row[] | null) ?? []).map((r) => ({
-    key: r.item_key,
-    kind: r.shop_items.kind,
-    name: r.shop_items.name,
-    description: r.shop_items.description,
-    price: r.shop_items.price,
-    owned: true,
-    equipped: equippedSet.has(r.item_key),
-  }));
+  return ((data as Row[] | null) ?? [])
+    .slice()
+    .sort(
+      (a, b) =>
+        OWNED_KIND_ORDER[a.shop_items.kind] - OWNED_KIND_ORDER[b.shop_items.kind] ||
+        a.shop_items.sort - b.shop_items.sort,
+    )
+    .map((r) => ({
+      key: r.item_key,
+      kind: r.shop_items.kind,
+      name: r.shop_items.name,
+      description: r.shop_items.description,
+      price: r.shop_items.price,
+      owned: true,
+      equipped: equippedSet.has(r.item_key),
+      count: r.count ?? 1,
+    }));
 }
 
-/** Owned badge item keys (for profile display). */
-export async function getMyBadges(): Promise<string[]> {
+/** Owned badge with how many times it was earned (≥1) — for profile display. */
+export interface OwnedBadge {
+  key: string;
+  count: number;
+}
+
+/** Owned badges (key + earned count) for profile display. */
+export async function getMyBadges(): Promise<OwnedBadge[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
   const {
@@ -738,10 +765,12 @@ export async function getMyBadges(): Promise<string[]> {
 
   const { data } = await supabase
     .from("user_items")
-    .select("item_key, shop_items!inner(kind)")
+    .select("item_key, count, shop_items!inner(kind)")
     .eq("user_id", user.id)
     .eq("shop_items.kind", "badge");
-  return ((data as { item_key: string }[] | null) ?? []).map((r) => r.item_key);
+  return ((data as { item_key: string; count: number | null }[] | null) ?? []).map(
+    (r) => ({ key: r.item_key, count: r.count ?? 1 }),
+  );
 }
 
 /** Current level, derived from lifetime points (×XP_PER_POINT) + achievement XP. */

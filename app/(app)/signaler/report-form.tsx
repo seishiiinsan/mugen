@@ -104,11 +104,6 @@ export function ReportForm() {
           {state.error}
         </p>
       )}
-      {state.ok && (
-        <p className="rounded-lg border border-success/30 bg-success/[0.06] px-3 py-2 text-sm text-success">
-          Merci ! Ton signalement a bien été envoyé.
-        </p>
-      )}
 
       <button
         type="submit"

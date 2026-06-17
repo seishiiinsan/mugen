@@ -3,7 +3,7 @@
 import { useActionState, useTransition } from "react";
 import type { ShopItem } from "@/lib/domain/types";
 import { rarityOf, type Rarity } from "@/lib/domain/economy";
-import { frameRing, nameColor, titleText } from "@/lib/domain/cosmetics";
+import { BADGE_META, frameRing, nameColor, titleText } from "@/lib/domain/cosmetics";
 import { CoinIcon, LockIcon } from "../../_components/icons";
 import { useActionToast, useToast } from "../../_components/toast";
 import { equipItem, purchaseItem, type ShopActionState } from "../actions";
@@ -58,15 +58,22 @@ export function ShopItemCard({
         >
           {label}
         </span>
-        {item.equipped ? (
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-accent">
-            Équipé
-          </span>
-        ) : item.owned ? (
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-faint">
-            Possédé
-          </span>
-        ) : null}
+        <span className="flex items-center gap-1.5">
+          {item.count && item.count > 1 && (
+            <span className="font-mono text-[10px] font-bold tabular-nums text-accent">
+              ×{item.count}
+            </span>
+          )}
+          {item.equipped ? (
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-accent">
+              Équipé
+            </span>
+          ) : item.owned ? (
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-faint">
+              Possédé
+            </span>
+          ) : null}
+        </span>
       </div>
 
       <Preview item={item} />
@@ -143,6 +150,15 @@ function Preview({ item }: { item: ShopItem }) {
       <div className="flex h-12 items-center justify-center">
         <span className="rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent">
           {titleText(item.key) || item.name}
+        </span>
+      </div>
+    );
+  }
+  if (item.kind === "badge") {
+    return (
+      <div className="flex h-12 items-center justify-center">
+        <span aria-hidden className="text-3xl leading-none">
+          {BADGE_META[item.key]?.emoji ?? "🏅"}
         </span>
       </div>
     );

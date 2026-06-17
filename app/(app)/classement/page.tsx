@@ -201,12 +201,12 @@ export default async function ClassementPage() {
         </p>
       ) : (
         <>
-          {/* Reward banner — marks the top 3 as the prize zone */}
+          {/* Reward banner — marks the top 50 as the prize zone */}
           <div className="flex items-center gap-2 rounded-lg border border-gold/30 bg-gold/[0.06] px-3 py-2">
             <CrownIcon className="h-4 w-4 shrink-0 text-gold" />
             <p className="text-xs text-muted">
-              <span className="font-medium text-foreground">Le top 3</span>{" "}
-              remporte les récompenses du mois.
+              <span className="font-medium text-foreground">Le top 50</span>{" "}
+              remporte des pièces — et le podium un badge exclusif.
             </p>
           </div>
 
@@ -278,10 +278,6 @@ export default async function ClassementPage() {
           )}
         </>
       )}
-
-      <p className="mt-6 text-center text-xs text-faint">
-        Les groupes privés entre amis arriveront en phase 2.
-      </p>
     </section>
   );
 }

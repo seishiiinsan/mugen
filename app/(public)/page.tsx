@@ -26,7 +26,7 @@ const STEPS = [
   {
     Icon: RankingIcon,
     title: "Grimpe au classement",
-    text: "Un classement mondial remis à zéro chaque mois. Le top 3 est récompensé.",
+    text: "Un classement mondial remis à zéro chaque mois. Le top 50 est récompensé.",
   },
 ];
 
@@ -315,7 +315,7 @@ export default function Home() {
         <Reveal className="mx-auto max-w-xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/[0.06] px-3 py-1 text-xs font-medium text-gold">
             <CrownIcon className="size-4" />
-            Le top 3 remporte les récompenses
+            Le top 50 récompensé chaque mois
           </span>
           <h2 className="mt-5 text-3xl font-bold tracking-tight sm:text-4xl">
             Vise le podium mondial
@@ -426,9 +426,9 @@ export default function Home() {
                   </h3>
                 </div>
                 <p className="mt-3 max-w-md text-sm text-muted">
-                  Chaque fin de mois, le top 3 mondial repart avec des lots et
-                  des avantages premium. Le compteur des récompenses repart à
-                  zéro avec le classement.
+                  Chaque fin de mois, le top 50 mondial repart avec des pièces —
+                  et le podium décroche en plus un badge exclusif. Le compteur
+                  des récompenses repart à zéro avec le classement.
                 </p>
               </div>
               <ul className="flex shrink-0 gap-2">

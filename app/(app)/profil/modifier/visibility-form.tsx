@@ -60,9 +60,6 @@ export function VisibilityForm({ initial }: { initial: Visibility }) {
       </div>
 
       {state.error && <p className="text-xs text-danger">{state.error}</p>}
-      {state.ok && (
-        <p className="text-xs text-success">Confidentialité enregistrée.</p>
-      )}
 
       <button
         type="submit"

@@ -204,12 +204,6 @@ export function PredictionForm({
       {state.error && (
         <p className="mt-4 text-center text-sm text-danger">{state.error}</p>
       )}
-      {state.ok && (
-        <p className="mt-4 text-center text-sm text-success">
-          Pronostic enregistré ({home}-{away}) — modifiable jusqu&apos;à la
-          clôture.
-        </p>
-      )}
 
       <button
         type="submit"

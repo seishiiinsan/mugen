@@ -111,6 +111,8 @@ export interface ShopItem {
   price: number;
   owned: boolean;
   equipped: boolean;
+  /** How many times the item was earned (≥1). Only >1 for repeatable badges. */
+  count?: number;
 }
 
 /** A coin ledger entry. */

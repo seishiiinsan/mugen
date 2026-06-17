@@ -3,19 +3,16 @@ import { redirect } from "next/navigation";
 import {
   getCurrentUser,
   getMyAchievementKeys,
-  getMyBadges,
   getMyLevel,
 } from "@/lib/data";
 import { ACHIEVEMENTS } from "@/lib/domain/economy";
 import { BADGE_META } from "@/lib/domain/cosmetics";
 import { ChevronLeftIcon, CoinIcon } from "../_components/icons";
-import { BadgePicker } from "./_components/badge-picker";
 
 export default async function SuccesPage() {
-  const [me, level, badges, achievementKeys] = await Promise.all([
+  const [me, level, achievementKeys] = await Promise.all([
     getCurrentUser(),
     getMyLevel(),
-    getMyBadges(),
     getMyAchievementKeys(),
   ]);
   if (!me) redirect("/login");
@@ -64,14 +61,6 @@ export default async function SuccesPage() {
           </div>
         </div>
       </header>
-
-      {/* Badge showcase */}
-      <div>
-        <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-faint">
-          Vitrine — badge affiché sur le profil
-        </h2>
-        <BadgePicker owned={badges} equipped={me.equippedBadge} />
-      </div>
 
       {/* Achievements */}
       <div>
