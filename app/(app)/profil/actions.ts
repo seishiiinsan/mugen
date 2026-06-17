@@ -110,5 +110,5 @@ export async function updateProfile(
     };
   }
 
-  redirect("/profil");
+  redirect(`/profil?t=${encodeURIComponent("Profil enregistré.")}`);
 }

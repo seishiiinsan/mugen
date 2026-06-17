@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useRef, useState } from "react";
+import { useActionToast } from "../../_components/toast";
 import { updateProfile, type ProfileFormState } from "../actions";
 
 export function ProfileForm({
@@ -15,6 +16,7 @@ export function ProfileForm({
     updateProfile,
     {},
   );
+  useActionToast(state);
   const [username, setUsername] = useState(initialUsername);
   const [preview, setPreview] = useState<string | null>(initialAvatar ?? null);
   const fileRef = useRef<HTMLInputElement>(null);

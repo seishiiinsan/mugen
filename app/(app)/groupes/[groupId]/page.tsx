@@ -27,15 +27,25 @@ function MemberRow({
       >
         {entry.rank}
       </span>
-      <UserAvatar
-        username={entry.username}
-        avatarUrl={entry.avatarUrl}
-        sizes="36px"
-        className="size-9 rounded-full border border-border bg-surface-2 text-sm font-semibold"
-      />
+      <Link
+        href={`/joueur/${encodeURIComponent(entry.username)}`}
+        className="shrink-0"
+      >
+        <UserAvatar
+          username={entry.username}
+          avatarUrl={entry.avatarUrl}
+          sizes="36px"
+          className="size-9 rounded-full border border-border bg-surface-2 text-sm font-semibold"
+        />
+      </Link>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate font-medium">{entry.username}</span>
+          <Link
+            href={`/joueur/${encodeURIComponent(entry.username)}`}
+            className="truncate font-medium hover:text-accent"
+          >
+            {entry.username}
+          </Link>
           {isMe && <span className="shrink-0 text-xs text-accent">vous</span>}
         </div>
         <div className="text-xs text-faint">

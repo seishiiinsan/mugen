@@ -25,7 +25,7 @@ export async function createGroup(
     return { error: "Impossible de créer le groupe." };
   }
 
-  redirect(`/groupes/${data[0].id}`);
+  redirect(`/groupes/${data[0].id}?t=${encodeURIComponent("Groupe créé.")}`);
 }
 
 export async function joinGroup(
@@ -47,7 +47,7 @@ export async function joinGroup(
     return { error: "Code d'invitation invalide." };
   }
 
-  redirect(`/groupes/${data}`);
+  redirect(`/groupes/${data}?t=${encodeURIComponent("Groupe rejoint.")}`);
 }
 
 export async function leaveGroup(formData: FormData): Promise<void> {
@@ -58,9 +58,9 @@ export async function leaveGroup(formData: FormData): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("leave_group", { p_group: groupId });
   if (error) {
-    redirect(`/groupes/${groupId}?error=leave`);
+    redirect(`/groupes/${groupId}?t=${encodeURIComponent("Impossible de quitter le groupe.")}&tt=error`);
   }
-  redirect("/groupes");
+  redirect(`/groupes?t=${encodeURIComponent("Groupe quitté.")}`);
 }
 
 export async function deleteGroup(formData: FormData): Promise<void> {
@@ -71,7 +71,7 @@ export async function deleteGroup(formData: FormData): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("delete_group", { p_group: groupId });
   if (error) {
-    redirect(`/groupes/${groupId}?error=delete`);
+    redirect(`/groupes/${groupId}?t=${encodeURIComponent("Impossible de supprimer le groupe.")}&tt=error`);
   }
-  redirect("/groupes");
+  redirect(`/groupes?t=${encodeURIComponent("Groupe supprimé.")}`);
 }
