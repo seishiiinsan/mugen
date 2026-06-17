@@ -1,11 +1,54 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { refresh } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import type { VisibilityAspect, VisibilityValue } from "@/lib/domain/types";
 
 export interface ProfileFormState {
   error?: string;
+}
+
+export interface VisibilityState {
+  ok?: boolean;
+  error?: string;
+}
+
+const VIS_ASPECTS: VisibilityAspect[] = [
+  "predictions",
+  "stats",
+  "achievements",
+  "friends",
+];
+const VIS_VALUES: VisibilityValue[] = ["everyone", "friends", "private"];
+
+/** Save the per-aspect predictions/stats/achievements/friends visibility. */
+export async function updateVisibility(
+  _prev: VisibilityState,
+  formData: FormData,
+): Promise<VisibilityState> {
+  if (!isSupabaseConfigured()) return { error: "Indisponible." };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Vous devez être connecté." };
+
+  for (const aspect of VIS_ASPECTS) {
+    const value = String(formData.get(aspect) ?? "");
+    if (!VIS_VALUES.includes(value as VisibilityValue)) continue;
+    const { error } = await supabase.rpc("set_profile_visibility", {
+      p_aspect: aspect,
+      p_value: value,
+    });
+    if (error) {
+      console.error("[updateVisibility]", aspect, error);
+      return { error: "Impossible d'enregistrer la confidentialité." };
+    }
+  }
+  refresh();
+  return { ok: true };
 }
 
 export async function updateProfile(

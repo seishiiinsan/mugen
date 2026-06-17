@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  FriendsIcon,
   GroupsIcon,
   MatchesIcon,
   PredictionsIcon,
@@ -15,6 +16,7 @@ const TABS = [
   { href: "/mes-pronostics", label: "Pronostics", Icon: PredictionsIcon },
   { href: "/classement", label: "Classement", Icon: RankingIcon },
   { href: "/groupes", label: "Groupes", Icon: GroupsIcon },
+  { href: "/amis", label: "Amis", Icon: FriendsIcon },
   { href: "/boutique", label: "Boutique", Icon: ShopIcon },
 ] as const;
 
