@@ -14,10 +14,18 @@ export type ToastType = "success" | "error" | "info";
 interface Toast {
   id: number;
   type: ToastType;
+  title: string;
   message: string;
 }
 
-type Push = (input: { type?: ToastType; message: string }) => void;
+type Push = (input: { type?: ToastType; title?: string; message: string }) => void;
+
+/** Default heading per toast type when none is supplied. */
+const DEFAULT_TITLES: Record<ToastType, string> = {
+  success: "Succès",
+  error: "Une erreur est survenue",
+  info: "Information",
+};
 
 const ToastContext = createContext<Push>(() => {});
 
@@ -51,18 +59,21 @@ export function useActionToast(
   }, [state]);
 }
 
-const STYLES: Record<ToastType, { ring: string; icon: React.ReactNode }> = {
+const STYLES: Record<ToastType, { ring: string; badge: string; icon: React.ReactNode }> = {
   success: {
     ring: "border-success/40",
-    icon: <CheckIcon className="size-4 text-success" />,
+    badge: "bg-success/10 text-success",
+    icon: <CheckIcon className="size-5" />,
   },
   error: {
     ring: "border-danger/40",
-    icon: <XIcon className="size-4 text-danger" />,
+    badge: "bg-danger/10 text-danger",
+    icon: <XIcon className="size-5" />,
   },
   info: {
     ring: "border-accent/40",
-    icon: <InfoIcon className="size-4 text-accent" />,
+    badge: "bg-accent/10 text-accent",
+    icon: <InfoIcon className="size-5" />,
   },
 };
 
@@ -73,17 +84,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts((t) => t.filter((x) => x.id !== id));
   }, []);
 
-  const push = useCallback<Push>(({ type = "success", message }) => {
+  const push = useCallback<Push>(({ type = "success", title, message }) => {
     if (!message) return;
     const id = Date.now() + Math.random();
-    setToasts((t) => [...t, { id, type, message }]);
-    setTimeout(() => remove(id), 4000);
+    setToasts((t) => [
+      ...t,
+      { id, type, title: title ?? DEFAULT_TITLES[type], message },
+    ]);
+    setTimeout(() => remove(id), 5000);
   }, [remove]);
 
   return (
     <ToastContext.Provider value={push}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2">
+      <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[calc(100vw-2rem)] max-w-md flex-col gap-3">
         {toasts.map((t) => (
           <ToastItem key={t.id} toast={t} onClose={() => remove(t.id)} />
         ))}
@@ -102,19 +116,26 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   return (
     <div
       role="status"
-      className={`pointer-events-auto flex items-center gap-2.5 rounded-xl border bg-surface px-3.5 py-2.5 shadow-lg transition-all duration-200 ${s.ring} ${
+      className={`pointer-events-auto flex items-start gap-3 rounded-xl border bg-surface px-4 py-3.5 shadow-xl transition-all duration-200 ${s.ring} ${
         show ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
       }`}
     >
-      <span className="shrink-0">{s.icon}</span>
-      <p className="min-w-0 flex-1 text-sm">{toast.message}</p>
+      <span
+        className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full ${s.badge}`}
+      >
+        {s.icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold leading-tight">{toast.title}</p>
+        <p className="mt-0.5 text-sm text-muted">{toast.message}</p>
+      </div>
       <button
         type="button"
         onClick={onClose}
         aria-label="Fermer"
-        className="shrink-0 text-faint transition-colors hover:text-foreground"
+        className="-mr-1 -mt-1 shrink-0 text-faint transition-colors hover:text-foreground"
       >
-        <XIcon className="size-3.5" />
+        <XIcon className="size-4" />
       </button>
     </div>
   );
