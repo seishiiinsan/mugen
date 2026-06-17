@@ -162,3 +162,93 @@ export interface ChangelogEntry {
   createdAt: string;
   updatedAt: string;
 }
+
+// ---------------------------------------------------------------------------
+// SOCIAL — amis, visibilité, notifications
+// ---------------------------------------------------------------------------
+
+/** Relationship between the viewer and another player (cf. friendship_status). */
+export type Relation = "self" | "friends" | "pending_out" | "pending_in" | "none";
+
+/** Profile aspects whose visibility can be tuned independently. */
+export type VisibilityAspect = "predictions" | "stats" | "achievements" | "friends";
+export type VisibilityValue = "everyone" | "friends" | "private";
+export type Visibility = Record<VisibilityAspect, VisibilityValue>;
+
+/** Identity-only cosmetics shared by social rows. */
+export interface PlayerIdentity {
+  id: string;
+  username: string;
+  avatarUrl?: string;
+  equippedTitle: string | null;
+  equippedColor: string | null;
+  equippedBadge: string | null;
+}
+
+/** A friend in the viewer's list, with computed level. */
+export interface FriendSummary extends PlayerIdentity {
+  equippedFrame: string | null;
+  lifetimePoints: number;
+  achievementKeys: string[];
+  level: number;
+}
+
+/** A pending friend request (incoming = received, outgoing = sent). */
+export interface FriendRequest extends PlayerIdentity {
+  direction: "incoming" | "outgoing";
+  createdAt: string;
+}
+
+/** A search hit, with the viewer's relation to that player. */
+export interface UserSearchResult extends PlayerIdentity {
+  relation: Relation;
+}
+
+/** Notification-center item (friend request / accept). */
+export interface NotificationItem {
+  id: string;
+  type: "friend_request" | "friend_accept";
+  actorId: string | null;
+  actorUsername: string | null;
+  actorAvatar?: string;
+  createdAt: string;
+  readAt: string | null;
+  /** For friend_request: is the request still actionable? */
+  pending: boolean;
+}
+
+/**
+ * A public profile overview. Aspects the viewer isn't allowed to see come back
+ * as `null` (gated server-side in `profile_overview`).
+ */
+export interface ProfileOverview {
+  id: string;
+  username: string;
+  avatarUrl?: string;
+  equippedFrame: string | null;
+  equippedTitle: string | null;
+  equippedColor: string | null;
+  equippedBadge: string | null;
+  joinedAt: string;
+  relation: Relation;
+  visibility: Visibility;
+  /** null when the viewer can't see this aspect. */
+  friendCount: number | null;
+  lifetimePoints: number | null;
+  exactScores: number | null;
+  achievementKeys: string[] | null;
+}
+
+/** A player's upcoming prediction, exposed if visibility allows. */
+export interface PublicPrediction {
+  fixtureId: number;
+  homeTeam: string;
+  awayTeam: string;
+  homeLogo?: string;
+  awayLogo?: string;
+  leagueName: string;
+  leagueLogo?: string;
+  kickoff: string;
+  homeGoals: number;
+  awayGoals: number;
+}
