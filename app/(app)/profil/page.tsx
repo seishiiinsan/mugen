@@ -7,6 +7,7 @@ import {
   getMyAchievementKeys,
   getMyBadges,
   getMyBoostStock,
+  getMyFriends,
   getMyLevel,
   getMyMonthlyStats,
   getMyPredictions,
@@ -32,6 +33,7 @@ import {
   ChevronLeftIcon,
   CoinIcon,
   CrownIcon,
+  FriendsIcon,
   InfoIcon,
   LogoutIcon,
 } from "../_components/icons";
@@ -63,16 +65,25 @@ function rankMedal(rank: number | null) {
 }
 
 export default async function ProfilPage() {
-  const [me, stats, predictions, boostStock, badges, achievementKeys, level] =
-    await Promise.all([
-      getCurrentUser(),
-      getMyMonthlyStats(),
-      getMyPredictions(),
-      getMyBoostStock(),
-      getMyBadges(),
-      getMyAchievementKeys(),
-      getMyLevel(),
-    ]);
+  const [
+    me,
+    stats,
+    predictions,
+    boostStock,
+    badges,
+    achievementKeys,
+    level,
+    friends,
+  ] = await Promise.all([
+    getCurrentUser(),
+    getMyMonthlyStats(),
+    getMyPredictions(),
+    getMyBoostStock(),
+    getMyBadges(),
+    getMyAchievementKeys(),
+    getMyLevel(),
+    getMyFriends(),
+  ]);
   if (!me) redirect("/login");
 
   const unlocked = new Set(achievementKeys);
@@ -186,12 +197,22 @@ export default async function ProfilPage() {
               )}
             </div>
             <p className="mt-0.5 text-sm text-muted">Membre depuis {joined}</p>
-            <div className="mt-1.5 flex items-center gap-3">
+            <div className="mt-1.5 flex flex-wrap items-center gap-3">
               <Link
                 href="/profil/modifier"
                 className="text-xs font-medium text-accent hover:underline"
               >
                 Modifier le profil
+              </Link>
+              <Link
+                href="/amis"
+                className="inline-flex items-center gap-1 text-xs font-semibold tabular-nums text-foreground hover:text-accent"
+              >
+                <FriendsIcon className="size-3.5 text-accent" />
+                {friends.length}
+                <span className="font-normal text-muted">
+                  ami{friends.length > 1 ? "s" : ""}
+                </span>
               </Link>
               <span className="inline-flex items-center gap-1 text-xs font-semibold tabular-nums text-foreground">
                 <CoinIcon className="size-3.5 text-accent" />

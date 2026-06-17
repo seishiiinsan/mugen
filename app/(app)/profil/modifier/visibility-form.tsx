@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import type { Visibility, VisibilityAspect } from "@/lib/domain/types";
+import { useActionToast } from "../../_components/toast";
 import { updateVisibility, type VisibilityState } from "../actions";
 
 const ASPECTS: { key: VisibilityAspect; label: string; hint: string }[] = [
@@ -22,6 +23,7 @@ export function VisibilityForm({ initial }: { initial: Visibility }) {
     updateVisibility,
     {},
   );
+  useActionToast(state, "Confidentialité enregistrée.");
 
   return (
     <form

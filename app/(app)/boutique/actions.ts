@@ -3,17 +3,23 @@
 import { refresh } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import type { ActionResult } from "@/lib/domain/types";
 
 export interface ShopActionState {
   error?: string;
   ok?: string;
 }
 
-export async function claimDailyBonus(): Promise<void> {
-  if (!isSupabaseConfigured()) return;
+export async function claimDailyBonus(): Promise<ActionResult> {
+  if (!isSupabaseConfigured()) return { ok: false, message: "Indisponible." };
   const supabase = await createClient();
-  await supabase.rpc("claim_daily_bonus");
+  const { data, error } = await supabase.rpc("claim_daily_bonus");
+  const row = (data as { granted: boolean; amount: number }[] | null)?.[0];
+  if (error) return { ok: false, message: "Impossible de récupérer le bonus." };
   refresh();
+  return row?.granted
+    ? { ok: true, message: `Bonus quotidien : +${row.amount} pièces !` }
+    : { ok: false, message: "Bonus déjà récupéré aujourd'hui." };
 }
 
 export async function purchaseItem(
@@ -34,13 +40,17 @@ export async function purchaseItem(
   return { ok: "Article acheté." };
 }
 
-export async function equipItem(formData: FormData): Promise<void> {
-  if (!isSupabaseConfigured()) return;
-  const slot = String(formData.get("slot") ?? "");
-  const raw = String(formData.get("key") ?? "");
-  const key = raw === "" ? null : raw;
-
+export async function equipItem(
+  slot: string,
+  key: string | null,
+): Promise<ActionResult> {
+  if (!isSupabaseConfigured()) return { ok: false, message: "Indisponible." };
   const supabase = await createClient();
-  await supabase.rpc("equip_item", { p_slot: slot, p_key: key });
+  const { error } = await supabase.rpc("equip_item", { p_slot: slot, p_key: key });
+  if (error) return { ok: false, message: "Action impossible." };
   refresh();
+  return {
+    ok: true,
+    message: key ? "Cosmétique équipé." : "Cosmétique retiré.",
+  };
 }

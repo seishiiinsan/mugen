@@ -1,8 +1,9 @@
 "use client";
 
 import { useTransition } from "react";
-import type { Relation } from "@/lib/domain/types";
+import type { ActionResult, Relation } from "@/lib/domain/types";
 import { CheckIcon, UserPlusIcon, XIcon } from "../../_components/icons";
+import { useToast } from "../../_components/toast";
 import {
   cancelFriendRequest,
   removeFriend,
@@ -29,7 +30,12 @@ export function RelationButton({
   relation: Relation;
 }) {
   const [pending, start] = useTransition();
-  const act = (fn: () => Promise<void>) => () => start(() => void fn());
+  const toast = useToast();
+  const act = (fn: () => Promise<ActionResult>) => () =>
+    start(async () => {
+      const r = await fn();
+      toast({ type: r.ok ? "success" : "error", message: r.message });
+    });
 
   if (relation === "self") return null;
 
@@ -96,11 +102,17 @@ export function RelationButton({
 /** "Retirer" button for the accepted-friends list. */
 export function RemoveButton({ userId }: { userId: string }) {
   const [pending, start] = useTransition();
+  const toast = useToast();
   return (
     <button
       type="button"
       disabled={pending}
-      onClick={() => start(() => void removeFriend(userId))}
+      onClick={() =>
+        start(async () => {
+          const r = await removeFriend(userId);
+          toast({ type: r.ok ? "success" : "error", message: r.message });
+        })
+      }
       className={DANGER}
     >
       Retirer

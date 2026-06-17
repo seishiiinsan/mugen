@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useTransition } from "react";
 import type { ShopItem } from "@/lib/domain/types";
 import { rarityOf, type Rarity } from "@/lib/domain/economy";
 import { frameRing, nameColor, titleText } from "@/lib/domain/cosmetics";
 import { CoinIcon, LockIcon } from "../../_components/icons";
+import { useActionToast, useToast } from "../../_components/toast";
 import { equipItem, purchaseItem, type ShopActionState } from "../actions";
 
 const RARITY_CHIP: Record<Rarity, string> = {
@@ -32,6 +33,14 @@ export function ShopItemCard({
     purchaseItem,
     {},
   );
+  useActionToast(state);
+  const toast = useToast();
+  const [equipping, startEquip] = useTransition();
+  const onEquip = () =>
+    startEquip(async () => {
+      const r = await equipItem(item.kind, item.equipped ? null : item.key);
+      toast({ type: r.ok ? "success" : "error", message: r.message });
+    });
   const { tier, label } = rarityOf(item.price);
   const affordable = balance >= item.price;
   const missing = Math.max(0, item.price - balance);
@@ -71,20 +80,18 @@ export function ShopItemCard({
 
       <div className="mt-3">
         {item.owned ? (
-          <form action={equipItem}>
-            <input type="hidden" name="slot" value={item.kind} />
-            <input type="hidden" name="key" value={item.equipped ? "" : item.key} />
-            <button
-              type="submit"
-              className={`press w-full rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                item.equipped
-                  ? "border-accent bg-accent/10 text-accent"
-                  : "border-border hover:border-border-strong"
-              }`}
-            >
-              {item.equipped ? "Retirer" : "Équiper"}
-            </button>
-          </form>
+          <button
+            type="button"
+            onClick={onEquip}
+            disabled={equipping}
+            className={`press w-full rounded-lg border px-3 py-2 text-sm font-medium transition-colors disabled:opacity-60 ${
+              item.equipped
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-border hover:border-border-strong"
+            }`}
+          >
+            {item.equipped ? "Retirer" : "Équiper"}
+          </button>
         ) : affordable ? (
           <form action={buy}>
             <input type="hidden" name="key" value={item.key} />
@@ -105,9 +112,6 @@ export function ShopItemCard({
             <LockIcon className="size-3.5" />
             Il te manque {missing}
           </div>
-        )}
-        {state.error && (
-          <p className="mt-1.5 text-center text-xs text-danger">{state.error}</p>
         )}
       </div>
     </div>

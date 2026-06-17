@@ -163,6 +163,12 @@ export interface ChangelogEntry {
   updatedAt: string;
 }
 
+/** Result of a mutating server action, surfaced to the user as a toast. */
+export interface ActionResult {
+  ok: boolean;
+  message: string;
+}
+
 // ---------------------------------------------------------------------------
 // SOCIAL — amis, visibilité, notifications
 // ---------------------------------------------------------------------------
