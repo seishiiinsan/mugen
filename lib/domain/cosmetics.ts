@@ -51,6 +51,7 @@ export const TITLE_TEXT: Record<string, string> = {
 
 /** Badge display (emoji + tone) by badge item key. */
 export const BADGE_META: Record<string, { emoji: string; label: string }> = {
+  badge_first_prediction: { emoji: "⭐", label: "Premier pronostic" },
   badge_first_exact: { emoji: "🎯", label: "Premier score exact" },
   badge_exact_10: { emoji: "🎯", label: "10 scores exacts" },
   badge_exact_25: { emoji: "🏹", label: "25 scores exacts" },

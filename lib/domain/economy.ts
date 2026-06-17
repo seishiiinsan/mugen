@@ -97,7 +97,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: "Soumettre et régler un premier pronostic.",
     coins: 20,
     xp: 50,
-    badge: null,
+    badge: "badge_first_prediction",
     test: (s) => s.settled >= 1,
   },
   {
