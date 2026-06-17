@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import {
   canClaimDaily,
   getCurrentUser,
-  getMyGrantedItems,
+  getMyOwnedItems,
   getShopItems,
 } from "@/lib/data";
 import { DAILY_BONUS } from "@/lib/domain/economy";
@@ -11,11 +11,11 @@ import { DailyBonus } from "./_components/daily-bonus";
 import { ShopTabs } from "./_components/shop-tabs";
 
 export default async function BoutiquePage() {
-  const [me, items, claimable, granted] = await Promise.all([
+  const [me, items, claimable, owned] = await Promise.all([
     getCurrentUser(),
     getShopItems(),
     canClaimDaily(),
-    getMyGrantedItems(),
+    getMyOwnedItems(),
   ]);
   if (!me) redirect("/login");
 
@@ -35,8 +35,9 @@ export default async function BoutiquePage() {
       label: "Titres",
       items: items.filter((i) => i.kind === "title"),
     },
-    ...(granted.length > 0
-      ? [{ id: "granted", label: "Reçus", items: granted }]
+    // Everything the player owns, every kind included (badges, granted rewards…).
+    ...(owned.length > 0
+      ? [{ id: "owned", label: "Possédés", items: owned }]
       : []),
   ];
 
