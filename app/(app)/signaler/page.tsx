@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser, getMyReports } from "@/lib/data";
-import { formatDate } from "@/lib/ui/format";
-import { REPORT_CATEGORY_META, REPORT_STATUS_META } from "@/lib/ui/reports";
 import { InfoIcon } from "../_components/icons";
+import { MyReports } from "./_components/my-reports";
 import { ReportForm } from "./report-form";
 
 export default async function SignalerPage() {
@@ -29,51 +28,7 @@ export default async function SignalerPage() {
         <ReportForm />
       </div>
 
-      {reports.length > 0 && (
-        <div>
-          <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-faint">
-            Mes signalements
-          </h2>
-          <ul className="space-y-2.5">
-            {reports.map((r) => {
-              const cat = REPORT_CATEGORY_META[r.category];
-              const status = REPORT_STATUS_META[r.status];
-              return (
-                <li
-                  key={r.id}
-                  className="rounded-xl border border-border bg-surface p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${cat.chip}`}
-                        >
-                          {cat.label}
-                        </span>
-                        <span className="text-xs text-faint">
-                          {formatDate(r.createdAt)}
-                        </span>
-                      </div>
-                      <div className="mt-1.5 text-sm font-semibold">
-                        {r.title}
-                      </div>
-                      <p className="mt-0.5 line-clamp-2 text-sm text-muted">
-                        {r.message}
-                      </p>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${status.chip}`}
-                    >
-                      {status.label}
-                    </span>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
+      {reports.length > 0 && <MyReports reports={reports} />}
     </section>
   );
 }

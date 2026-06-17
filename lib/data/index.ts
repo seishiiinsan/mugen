@@ -24,7 +24,10 @@ import type {
   FriendRequest,
   FriendSummary,
   Group,
+  AdminPlayer,
+  AdminPlayerDetail,
   LeaderboardEntry,
+  RankedPlayer,
   NotificationItem,
   Prediction,
   ProfileOverview,
@@ -475,6 +478,75 @@ export async function getMyMonthlyStats(): Promise<MonthlyStats> {
     : { points: 0, rank: null, exactScores: 0 };
 }
 
+/** Standard competition ranking by `value` desc (ties share a rank). */
+function rankByValue(entries: Omit<RankedPlayer, "rank">[]): RankedPlayer[] {
+  const sorted = [...entries].sort(
+    (a, b) => b.value - a.value || a.username.localeCompare(b.username, "fr"),
+  );
+  let rank = 0;
+  let prev = Number.NaN;
+  return sorted.map((e, i) => {
+    if (i === 0 || e.value !== prev) {
+      rank = i + 1;
+      prev = e.value;
+    }
+    return { rank, ...e };
+  });
+}
+
+/** All-time richest players, ranked by coin balance (no rewards, no reset). */
+export async function getCoinsLeaderboard(): Promise<RankedPlayer[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, username, avatar_url, coins");
+  const entries = (
+    (data as { id: string; username: string; avatar_url: string | null; coins: number }[] | null) ??
+    []
+  ).map((p) => ({
+    userId: p.id,
+    username: p.username,
+    avatarUrl: p.avatar_url ?? undefined,
+    value: p.coins ?? 0,
+  }));
+  return rankByValue(entries).slice(0, 100);
+}
+
+/** All-time XP board, ranked by lifetime XP (no rewards, no reset). */
+export async function getXpLeaderboard(): Promise<RankedPlayer[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("xp_standings");
+  if (error) {
+    console.error("[getXpLeaderboard]", error);
+    return [];
+  }
+  type Row = {
+    user_id: string;
+    username: string;
+    avatar_url: string | null;
+    points: number;
+    achievements: string[] | null;
+  };
+  const entries = ((data as Row[] | null) ?? []).map((r) => {
+    const unlocked = new Set(r.achievements ?? []);
+    const achXp = ACHIEVEMENTS.filter((a) => unlocked.has(a.key)).reduce(
+      (sum, a) => sum + a.xp,
+      0,
+    );
+    const xp = Number(r.points) * XP_PER_POINT + achXp;
+    return {
+      userId: r.user_id,
+      username: r.username,
+      avatarUrl: r.avatar_url ?? undefined,
+      value: xp,
+      level: levelFromXp(xp).level,
+    };
+  });
+  return rankByValue(entries).slice(0, 100);
+}
+
 export async function getCurrentUser(): Promise<UserProfile | null> {
   // Mock fallback so the app runs without a Supabase project wired up.
   if (!isSupabaseConfigured()) return CURRENT_USER;
@@ -748,6 +820,22 @@ export async function getMyOwnedItems(): Promise<ShopItem[]> {
     }));
 }
 
+/** Map of friend id → item keys they own, for the boutique gift picker. */
+export async function getFriendsOwnedItems(): Promise<Record<string, string[]>> {
+  if (!isSupabaseConfigured()) return {};
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("friends_owned_items");
+  if (error) {
+    console.error("[getFriendsOwnedItems]", error);
+    return {};
+  }
+  const map: Record<string, string[]> = {};
+  for (const r of (data as { friend_id: string; item_key: string }[] | null) ?? []) {
+    (map[r.friend_id] ??= []).push(r.item_key);
+  }
+  return map;
+}
+
 /** Owned badge with how many times it was earned (≥1) — for profile display. */
 export interface OwnedBadge {
   key: string;
@@ -938,6 +1026,59 @@ export async function getAdminReports(): Promise<Report[]> {
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   }));
+}
+
+interface AdminPlayerRow {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  coins: number;
+  is_admin: boolean;
+  created_at: string;
+  lifetime_points: number;
+}
+
+/** All players for the admin "Joueurs" tab (admin-gated RPC). */
+export async function getAdminPlayers(): Promise<AdminPlayer[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_list_players");
+  if (error) {
+    console.error("[getAdminPlayers]", error);
+    return [];
+  }
+  return ((data as AdminPlayerRow[] | null) ?? []).map((r) => ({
+    id: r.id,
+    username: r.username,
+    avatarUrl: r.avatar_url ?? undefined,
+    coins: r.coins,
+    isAdmin: r.is_admin,
+    createdAt: r.created_at,
+    lifetimePoints: Number(r.lifetime_points ?? 0),
+  }));
+}
+
+/** Full account dump for one player (admin-gated). XP/level derived app-side. */
+export async function getAdminPlayerDetail(
+  id: string,
+): Promise<AdminPlayerDetail | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_player_detail", {
+    p_user: id,
+  });
+  if (error || !data) {
+    if (error) console.error("[getAdminPlayerDetail]", error);
+    return null;
+  }
+  const d = data as Omit<AdminPlayerDetail, "totalXp" | "level">;
+  const unlocked = new Set(d.achievements ?? []);
+  const achXp = ACHIEVEMENTS.filter((a) => unlocked.has(a.key)).reduce(
+    (sum, a) => sum + a.xp,
+    0,
+  );
+  const totalXp = Number(d.lifetime_points) * XP_PER_POINT + achXp;
+  return { ...d, totalXp, level: levelFromXp(totalXp).level };
 }
 
 interface ChangelogRow {
@@ -1191,13 +1332,15 @@ export async function getUserUpcomingPredictions(
 
 interface NotificationRow {
   id: string;
-  type: "friend_request" | "friend_accept";
+  type: "friend_request" | "friend_accept" | "gift";
   actor_id: string | null;
   actor_username: string | null;
   actor_avatar: string | null;
   created_at: string;
   read_at: string | null;
   pending: boolean;
+  ref: string | null;
+  ref_label: string | null;
 }
 
 /** The viewer's notifications (newest first). */
@@ -1218,6 +1361,7 @@ export async function getMyNotifications(): Promise<NotificationItem[]> {
     createdAt: r.created_at,
     readAt: r.read_at,
     pending: Boolean(r.pending),
+    refLabel: r.ref_label,
   }));
 }
 

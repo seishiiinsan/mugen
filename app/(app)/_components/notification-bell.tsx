@@ -10,6 +10,11 @@ import { UserAvatar } from "./user-avatar";
 
 function describe(n: NotificationItem): string {
   const who = n.actorUsername ?? "Un joueur";
+  if (n.type === "gift") {
+    return n.refLabel
+      ? `${who} vous a offert « ${n.refLabel} ».`
+      : `${who} vous a offert un cosmétique.`;
+  }
   return n.type === "friend_accept"
     ? `${who} a accepté votre demande d'ami.`
     : `${who} vous a envoyé une demande d'ami.`;

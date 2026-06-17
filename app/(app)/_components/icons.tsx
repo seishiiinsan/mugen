@@ -21,6 +21,18 @@ export function CoinIcon({ className }: IconProps) {
   );
 }
 
+export function GiftIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <rect x="3.5" y="8" width="17" height="4" rx="1" />
+      <path d="M5 12v8h14v-8" />
+      <path d="M12 8v12" />
+      <path d="M12 8C12 8 11 4 8.5 4a2 2 0 0 0 0 4H12z" />
+      <path d="M12 8C12 8 13 4 15.5 4a2 2 0 0 1 0 4H12z" />
+    </svg>
+  );
+}
+
 export function MatchesIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

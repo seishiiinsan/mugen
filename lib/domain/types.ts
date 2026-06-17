@@ -86,6 +86,18 @@ export interface LeaderboardEntry {
   avatarUrl?: string;
 }
 
+/** A ranked player on an all-time board (coins or XP) — no rewards, no reset. */
+export interface RankedPlayer {
+  rank: number;
+  userId: string;
+  username: string;
+  avatarUrl?: string;
+  /** The ranked metric: coin balance, or total lifetime XP. */
+  value: number;
+  /** Level, populated only for the XP board. */
+  level?: number;
+}
+
 export interface UserProfile {
   id: string;
   username: string;
@@ -130,6 +142,52 @@ export interface Group {
   ownerId: string;
   memberCount: number;
   createdAt: string;
+}
+
+/** A row in the admin "Joueurs" list. */
+export interface AdminPlayer {
+  id: string;
+  username: string;
+  avatarUrl?: string;
+  coins: number;
+  isAdmin: boolean;
+  createdAt: string;
+  lifetimePoints: number;
+}
+
+/** Full account dump for the admin player modal — "vraiment tout". */
+export interface AdminPlayerDetail {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  created_at: string;
+  is_admin: boolean;
+  coins: number;
+  predictions_visibility: string;
+  equipped: {
+    frame: string | null;
+    title: string | null;
+    color: string | null;
+    badge: string | null;
+  };
+  lifetime_points: number;
+  predictions_total: number;
+  predictions_settled: number;
+  exact_scores: number;
+  friends_count: number;
+  achievements: string[];
+  items: { key: string; kind: string; name: string; count: number }[];
+  reports: {
+    id: string;
+    category: string;
+    title: string;
+    status: string;
+    created_at: string;
+  }[];
+  ledger: { amount: number; reason: string; ref: string; created_at: string }[];
+  /** Derived app-side from lifetime points + achievement XP. */
+  totalXp: number;
+  level: number;
 }
 
 /** A player-submitted report (bug / suggestion / other). */
@@ -215,7 +273,7 @@ export interface UserSearchResult extends PlayerIdentity {
 /** Notification-center item (friend request / accept). */
 export interface NotificationItem {
   id: string;
-  type: "friend_request" | "friend_accept";
+  type: "friend_request" | "friend_accept" | "gift";
   actorId: string | null;
   actorUsername: string | null;
   actorAvatar?: string;
@@ -223,6 +281,8 @@ export interface NotificationItem {
   readAt: string | null;
   /** For friend_request: is the request still actionable? */
   pending: boolean;
+  /** For gift: display name of the offered item, if still in the catalogue. */
+  refLabel?: string | null;
 }
 
 /**

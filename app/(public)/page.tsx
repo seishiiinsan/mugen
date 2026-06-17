@@ -3,7 +3,11 @@ import Link from "next/link";
 import { SCORING_RULES } from "@/lib/domain/scoring";
 import {
   BadgeIcon,
+  BellIcon,
   CrownIcon,
+  FriendsIcon,
+  GroupsIcon,
+  LockIcon,
   PredictionsIcon,
   RankingIcon,
   ShopIcon,
@@ -42,6 +46,29 @@ const BADGES = [
   "100 pronostics",
   "Podium du mois",
   "Fondateur",
+];
+
+const SOCIAL = [
+  {
+    Icon: FriendsIcon,
+    title: "Ajoute tes amis",
+    text: "Cherche un joueur par pseudo, envoie une demande, et suis sa progression.",
+  },
+  {
+    Icon: GroupsIcon,
+    title: "Profils publics",
+    text: "Visite un profil : niveau, statistiques, succès et pronostics à venir.",
+  },
+  {
+    Icon: LockIcon,
+    title: "Confidentialité à la carte",
+    text: "Choisis qui voit tes pronos, tes stats, tes succès et ta liste d'amis.",
+  },
+  {
+    Icon: BellIcon,
+    title: "Notifications",
+    text: "Une cloche t'avertit des demandes d'amis reçues et acceptées.",
+  },
 ];
 
 const COMPARISON = {
@@ -450,8 +477,39 @@ export default function Home() {
         </RevealGroup>
       </Band>
 
-      {/* FAQ */}
+      {/* Friends / social */}
       <Band alt>
+        <Reveal className="mx-auto max-w-xl text-center">
+          <Eyebrow>Amis</Eyebrow>
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Plus fort à plusieurs
+          </h2>
+          <p className="mt-3 text-muted">
+            Ajoute tes potes, comparez vos pronostics et gardez un œil sur qui
+            mène la danse.
+          </p>
+        </Reveal>
+
+        <RevealGroup className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {SOCIAL.map(({ Icon, title, text }) => (
+            <RevealItem
+              key={title}
+              className="rounded-2xl border border-border bg-surface p-6"
+            >
+              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/10 text-accent">
+                <Icon className="size-5" />
+              </span>
+              <h3 className="mt-4 text-lg font-semibold tracking-tight">
+                {title}
+              </h3>
+              <p className="mt-1 text-sm text-muted">{text}</p>
+            </RevealItem>
+          ))}
+        </RevealGroup>
+      </Band>
+
+      {/* FAQ */}
+      <Band>
         <Reveal className="mx-auto max-w-2xl">
           <Eyebrow>FAQ</Eyebrow>
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
@@ -476,7 +534,7 @@ export default function Home() {
       </Band>
 
       {/* Final CTA */}
-      <Band>
+      <Band alt>
         <Reveal className="overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-accent/[0.10] via-surface to-surface p-10 text-center sm:p-16">
           <h2 className="mx-auto max-w-xl text-3xl font-bold tracking-tight sm:text-5xl">
             Le coup d&apos;envoi est imminent.
