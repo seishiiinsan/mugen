@@ -21,15 +21,24 @@ import type {
   CoinEntry,
   Fixture,
   FixtureStatus,
+  FriendRequest,
+  FriendSummary,
   Group,
   LeaderboardEntry,
+  NotificationItem,
   Prediction,
+  ProfileOverview,
+  PublicPrediction,
+  Relation,
   Report,
   ReportCategory,
   ReportStatus,
   ScorerPick,
   ShopItem,
   UserProfile,
+  UserSearchResult,
+  Visibility,
+  VisibilityValue,
 } from "@/lib/domain/types";
 import { activeLeaderboardMonth, BOOST_TYPES } from "@/lib/domain/boosts";
 import {
@@ -946,4 +955,286 @@ export async function getAdminChangelog(): Promise<ChangelogEntry[]> {
     return [];
   }
   return ((data as ChangelogRow[] | null) ?? []).map(mapChangelogRow);
+}
+
+// ---------------------------------------------------------------------------
+// SOCIAL (amis, profils publics, notifications, visibilité)
+// ---------------------------------------------------------------------------
+
+/** Level number from lifetime points + achievement XP — mirrors getMyLevel. */
+function computeLevel(lifetimePoints: number, achievementKeys: string[]): number {
+  const unlocked = new Set(achievementKeys);
+  const achXp = ACHIEVEMENTS.filter((a) => unlocked.has(a.key)).reduce(
+    (sum, a) => sum + a.xp,
+    0,
+  );
+  return levelFromXp(lifetimePoints * XP_PER_POINT + achXp).level;
+}
+
+interface IdentityRow {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  equipped_title: string | null;
+  equipped_color: string | null;
+  equipped_badge: string | null;
+}
+
+/** Player search by username substring, with the viewer's relation to each. */
+export async function searchUsers(query: string): Promise<UserSearchResult[]> {
+  if (!isSupabaseConfigured()) return [];
+  const q = query.trim();
+  if (!q) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("search_users", { p_query: q });
+  if (error) {
+    console.error("[searchUsers]", error);
+    return [];
+  }
+  return ((data as (IdentityRow & { relation: string })[] | null) ?? []).map(
+    (r) => ({
+      id: r.id,
+      username: r.username,
+      avatarUrl: r.avatar_url ?? undefined,
+      equippedTitle: r.equipped_title,
+      equippedColor: r.equipped_color,
+      equippedBadge: r.equipped_badge,
+      relation: r.relation as Relation,
+    }),
+  );
+}
+
+interface FriendRow extends IdentityRow {
+  equipped_frame: string | null;
+  lifetime_points: number;
+  achievement_keys: string[] | null;
+}
+
+/** The viewer's accepted friends, with each friend's computed level. */
+export async function getMyFriends(): Promise<FriendSummary[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_friends");
+  if (error) {
+    console.error("[getMyFriends]", error);
+    return [];
+  }
+  return ((data as FriendRow[] | null) ?? []).map((r) => {
+    const keys = r.achievement_keys ?? [];
+    const points = Number(r.lifetime_points ?? 0);
+    return {
+      id: r.id,
+      username: r.username,
+      avatarUrl: r.avatar_url ?? undefined,
+      equippedFrame: r.equipped_frame,
+      equippedTitle: r.equipped_title,
+      equippedColor: r.equipped_color,
+      equippedBadge: r.equipped_badge,
+      lifetimePoints: points,
+      achievementKeys: keys,
+      level: computeLevel(points, keys),
+    };
+  });
+}
+
+/** Pending friend requests (incoming = received, outgoing = sent). */
+export async function getMyFriendRequests(): Promise<FriendRequest[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_friend_requests");
+  if (error) {
+    console.error("[getMyFriendRequests]", error);
+    return [];
+  }
+  return (
+    (data as (IdentityRow & { direction: string; created_at: string })[] | null) ??
+    []
+  ).map((r) => ({
+    id: r.id,
+    username: r.username,
+    avatarUrl: r.avatar_url ?? undefined,
+    equippedTitle: r.equipped_title,
+    equippedColor: r.equipped_color,
+    equippedBadge: r.equipped_badge,
+    direction: r.direction === "outgoing" ? "outgoing" : "incoming",
+    createdAt: r.created_at,
+  }));
+}
+
+interface OverviewRow {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  equipped_frame: string | null;
+  equipped_title: string | null;
+  equipped_color: string | null;
+  equipped_badge: string | null;
+  created_at: string;
+  relation: string;
+  predictions_visibility: string;
+  stats_visibility: string;
+  achievements_visibility: string;
+  friends_visibility: string;
+  friend_count: number | null;
+  lifetime_points: number | null;
+  exact_scores: number | null;
+  achievement_keys: string[] | null;
+}
+
+/** Public profile overview by username (aspects gated server-side). */
+export async function getProfileOverview(
+  username: string,
+): Promise<ProfileOverview | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("profile_overview", {
+    p_username: username,
+  });
+  if (error) {
+    console.error("[getProfileOverview]", error);
+    return null;
+  }
+  const r = (data as OverviewRow[] | null)?.[0];
+  if (!r) return null;
+  const num = (v: number | null) => (v == null ? null : Number(v));
+  return {
+    id: r.id,
+    username: r.username,
+    avatarUrl: r.avatar_url ?? undefined,
+    equippedFrame: r.equipped_frame,
+    equippedTitle: r.equipped_title,
+    equippedColor: r.equipped_color,
+    equippedBadge: r.equipped_badge,
+    joinedAt: r.created_at,
+    relation: r.relation as Relation,
+    visibility: {
+      predictions: r.predictions_visibility as VisibilityValue,
+      stats: r.stats_visibility as VisibilityValue,
+      achievements: r.achievements_visibility as VisibilityValue,
+      friends: r.friends_visibility as VisibilityValue,
+    },
+    friendCount: num(r.friend_count),
+    lifetimePoints: num(r.lifetime_points),
+    exactScores: num(r.exact_scores),
+    achievementKeys: r.achievement_keys ?? null,
+  };
+}
+
+interface UpcomingRow {
+  fixture_id: number;
+  home_team: string;
+  away_team: string;
+  home_logo: string | null;
+  away_logo: string | null;
+  league_name: string;
+  league_logo: string | null;
+  kickoff: string;
+  home_goals: number;
+  away_goals: number;
+}
+
+/** A player's upcoming predictions (empty if visibility forbids it). */
+export async function getUserUpcomingPredictions(
+  uid: string,
+): Promise<PublicPrediction[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("user_upcoming_predictions", {
+    p_uid: uid,
+  });
+  if (error) {
+    console.error("[getUserUpcomingPredictions]", error);
+    return [];
+  }
+  return ((data as UpcomingRow[] | null) ?? []).map((r) => ({
+    fixtureId: Number(r.fixture_id),
+    homeTeam: r.home_team,
+    awayTeam: r.away_team,
+    homeLogo: r.home_logo ?? undefined,
+    awayLogo: r.away_logo ?? undefined,
+    leagueName: r.league_name,
+    leagueLogo: r.league_logo ?? undefined,
+    kickoff: r.kickoff,
+    homeGoals: r.home_goals,
+    awayGoals: r.away_goals,
+  }));
+}
+
+interface NotificationRow {
+  id: string;
+  type: "friend_request" | "friend_accept";
+  actor_id: string | null;
+  actor_username: string | null;
+  actor_avatar: string | null;
+  created_at: string;
+  read_at: string | null;
+  pending: boolean;
+}
+
+/** The viewer's notifications (newest first). */
+export async function getMyNotifications(): Promise<NotificationItem[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_notifications");
+  if (error) {
+    console.error("[getMyNotifications]", error);
+    return [];
+  }
+  return ((data as NotificationRow[] | null) ?? []).map((r) => ({
+    id: r.id,
+    type: r.type,
+    actorId: r.actor_id,
+    actorUsername: r.actor_username,
+    actorAvatar: r.actor_avatar ?? undefined,
+    createdAt: r.created_at,
+    readAt: r.read_at,
+    pending: Boolean(r.pending),
+  }));
+}
+
+/** Count of unread notifications for the viewer. */
+export async function getUnreadNotificationCount(): Promise<number> {
+  if (!isSupabaseConfigured()) return 0;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("unread_notification_count");
+  if (error) {
+    console.error("[getUnreadNotificationCount]", error);
+    return 0;
+  }
+  return Number(data ?? 0);
+}
+
+/** The viewer's per-aspect visibility settings. */
+export async function getMyVisibility(): Promise<Visibility> {
+  const fallback: Visibility = {
+    predictions: "friends",
+    stats: "everyone",
+    achievements: "everyone",
+    friends: "friends",
+  };
+  if (!isSupabaseConfigured()) return fallback;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return fallback;
+  const { data } = await supabase
+    .from("profiles")
+    .select(
+      "predictions_visibility, stats_visibility, achievements_visibility, friends_visibility",
+    )
+    .eq("id", user.id)
+    .maybeSingle<{
+      predictions_visibility: string | null;
+      stats_visibility: string | null;
+      achievements_visibility: string | null;
+      friends_visibility: string | null;
+    }>();
+  if (!data) return fallback;
+  return {
+    predictions: (data.predictions_visibility ?? "friends") as VisibilityValue,
+    stats: (data.stats_visibility ?? "everyone") as VisibilityValue,
+    achievements: (data.achievements_visibility ?? "everyone") as VisibilityValue,
+    friends: (data.friends_visibility ?? "friends") as VisibilityValue,
+  };
 }

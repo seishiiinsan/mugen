@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/data";
+import { getCurrentUser, getMyVisibility } from "@/lib/data";
 import { ChevronLeftIcon } from "../../_components/icons";
 import { ProfileForm } from "./profile-form";
+import { VisibilityForm } from "./visibility-form";
 
 export default async function EditProfilePage() {
-  const me = await getCurrentUser();
+  const [me, visibility] = await Promise.all([
+    getCurrentUser(),
+    getMyVisibility(),
+  ]);
   if (!me) redirect("/login");
 
   return (
@@ -23,6 +27,8 @@ export default async function EditProfilePage() {
       </h1>
 
       <ProfileForm initialUsername={me.username} initialAvatar={me.avatarUrl} />
+
+      <VisibilityForm initial={visibility} />
     </section>
   );
 }
