@@ -40,6 +40,24 @@ export async function purchaseItem(
   return { ok: "Article acheté." };
 }
 
+export async function giftItem(
+  targetId: string,
+  key: string,
+): Promise<ActionResult> {
+  if (!isSupabaseConfigured()) return { ok: false, message: "Indisponible." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("gift_item", {
+    p_target: targetId,
+    p_key: key,
+  });
+  const row = (data as { ok: boolean; error: string | null }[] | null)?.[0];
+  if (error || !row?.ok) {
+    return { ok: false, message: row?.error ?? "Cadeau impossible." };
+  }
+  refresh();
+  return { ok: true, message: "Cadeau offert ! 🎁" };
+}
+
 export async function equipItem(
   slot: string,
   key: string | null,

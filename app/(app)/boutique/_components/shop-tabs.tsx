@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ShopItem } from "@/lib/domain/types";
+import type { FriendSummary, ShopItem } from "@/lib/domain/types";
 import { ShopItemCard } from "./shop-item-card";
 
 type Tab = {
@@ -13,9 +13,11 @@ type Tab = {
 export function ShopTabs({
   tabs,
   balance,
+  friends,
 }: {
   tabs: Tab[];
   balance: number;
+  friends: FriendSummary[];
 }) {
   const [active, setActive] = useState(tabs[0]?.id ?? "");
   const current = tabs.find((t) => t.id === active);
@@ -50,7 +52,12 @@ export function ShopTabs({
       {current && current.items.length > 0 ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {current.items.map((item) => (
-            <ShopItemCard key={item.key} item={item} balance={balance} />
+            <ShopItemCard
+              key={item.key}
+              item={item}
+              balance={balance}
+              friends={friends}
+            />
           ))}
         </div>
       ) : (

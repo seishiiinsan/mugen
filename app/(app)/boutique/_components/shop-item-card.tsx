@@ -1,12 +1,13 @@
 "use client";
 
 import { useActionState, useTransition } from "react";
-import type { ShopItem } from "@/lib/domain/types";
+import type { FriendSummary, ShopItem } from "@/lib/domain/types";
 import { rarityOf, type Rarity } from "@/lib/domain/economy";
 import { BADGE_META, frameRing, nameColor, titleText } from "@/lib/domain/cosmetics";
 import { CoinIcon, LockIcon } from "../../_components/icons";
 import { useActionToast, useToast } from "../../_components/toast";
 import { equipItem, purchaseItem, type ShopActionState } from "../actions";
+import { GiftButton } from "./gift-button";
 
 const RARITY_CHIP: Record<Rarity, string> = {
   common: "border-border text-faint",
@@ -25,9 +26,11 @@ const RARITY_GLOW: Record<Rarity, string> = {
 export function ShopItemCard({
   item,
   balance,
+  friends = [],
 }: {
   item: ShopItem;
   balance: number;
+  friends?: FriendSummary[];
 }) {
   const [state, buy, buying] = useActionState<ShopActionState, FormData>(
     purchaseItem,
@@ -85,40 +88,52 @@ export function ShopItemCard({
         )}
       </div>
 
-      <div className="mt-3">
-        {item.owned ? (
-          <button
-            type="button"
-            onClick={onEquip}
-            disabled={equipping}
-            className={`press w-full rounded-lg border px-3 py-2 text-sm font-medium transition-colors disabled:opacity-60 ${
-              item.equipped
-                ? "border-accent bg-accent/10 text-accent"
-                : "border-border hover:border-border-strong"
-            }`}
-          >
-            {item.equipped ? "Retirer" : "Équiper"}
-          </button>
-        ) : affordable ? (
-          <form action={buy}>
-            <input type="hidden" name="key" value={item.key} />
+      <div className="mt-3 flex items-stretch gap-2">
+        <div className="min-w-0 flex-1">
+          {item.owned ? (
             <button
-              type="submit"
-              disabled={buying}
-              className="press flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-strong disabled:opacity-50"
+              type="button"
+              onClick={onEquip}
+              disabled={equipping}
+              className={`press w-full rounded-lg border px-3 py-2 text-sm font-medium transition-colors disabled:opacity-60 ${
+                item.equipped
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-border hover:border-border-strong"
+              }`}
             >
-              <CoinIcon className="size-4" />
-              {item.price}
+              {item.equipped ? "Retirer" : "Équiper"}
             </button>
-          </form>
-        ) : (
-          <div
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 text-xs font-medium text-faint"
-            title={`Il te manque ${missing} pièces`}
-          >
-            <LockIcon className="size-3.5" />
-            Il te manque {missing}
-          </div>
+          ) : affordable ? (
+            <form action={buy}>
+              <input type="hidden" name="key" value={item.key} />
+              <button
+                type="submit"
+                disabled={buying}
+                className="press flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-strong disabled:opacity-50"
+              >
+                <CoinIcon className="size-4" />
+                {item.price}
+              </button>
+            </form>
+          ) : (
+            <div
+              className="flex h-full w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 text-xs font-medium text-faint"
+              title={`Il te manque ${missing} pièces`}
+            >
+              <LockIcon className="size-3.5" />
+              Il te manque {missing}
+            </div>
+          )}
+        </div>
+
+        {/* Offrir à un ami — cosmétiques uniquement (pas les badges). */}
+        {item.kind !== "badge" && friends.length > 0 && (
+          <GiftButton
+            itemKey={item.key}
+            itemName={item.name}
+            price={item.price}
+            friends={friends}
+          />
         )}
       </div>
     </div>

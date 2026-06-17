@@ -1261,13 +1261,15 @@ export async function getUserUpcomingPredictions(
 
 interface NotificationRow {
   id: string;
-  type: "friend_request" | "friend_accept";
+  type: "friend_request" | "friend_accept" | "gift";
   actor_id: string | null;
   actor_username: string | null;
   actor_avatar: string | null;
   created_at: string;
   read_at: string | null;
   pending: boolean;
+  ref: string | null;
+  ref_label: string | null;
 }
 
 /** The viewer's notifications (newest first). */
@@ -1288,6 +1290,7 @@ export async function getMyNotifications(): Promise<NotificationItem[]> {
     createdAt: r.created_at,
     readAt: r.read_at,
     pending: Boolean(r.pending),
+    refLabel: r.ref_label,
   }));
 }
 

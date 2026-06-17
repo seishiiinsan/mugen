@@ -227,7 +227,7 @@ export interface UserSearchResult extends PlayerIdentity {
 /** Notification-center item (friend request / accept). */
 export interface NotificationItem {
   id: string;
-  type: "friend_request" | "friend_accept";
+  type: "friend_request" | "friend_accept" | "gift";
   actorId: string | null;
   actorUsername: string | null;
   actorAvatar?: string;
@@ -235,6 +235,8 @@ export interface NotificationItem {
   readAt: string | null;
   /** For friend_request: is the request still actionable? */
   pending: boolean;
+  /** For gift: display name of the offered item, if still in the catalogue. */
+  refLabel?: string | null;
 }
 
 /**
