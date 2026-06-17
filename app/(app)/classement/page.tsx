@@ -278,10 +278,6 @@ export default async function ClassementPage() {
           )}
         </>
       )}
-
-      <p className="mt-6 text-center text-xs text-faint">
-        Les groupes privés entre amis arriveront en phase 2.
-      </p>
     </section>
   );
 }
