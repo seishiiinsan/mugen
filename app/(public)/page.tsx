@@ -42,10 +42,10 @@ const PODIUM = [
 
 const BADGES = [
   "Premier score exact",
-  "10 scores exacts",
-  "100 pronostics",
+  "25 buteurs trouvés",
+  "10 amis",
+  "Garde-robe garnie",
   "Podium du mois",
-  "Fondateur",
 ];
 
 const SOCIAL = [
@@ -68,6 +68,47 @@ const SOCIAL = [
     Icon: BellIcon,
     title: "Notifications",
     text: "Une cloche t'avertit des demandes d'amis reçues et acceptées.",
+  },
+];
+
+const MATCH_FEATURES = [
+  {
+    emoji: "⚽",
+    title: "Compositions",
+    text: "Le terrain à la vraie formation (4-4-2, 4-2-3-1…), titulaires et bancs des deux équipes.",
+  },
+  {
+    emoji: "⏱️",
+    title: "Faits de match",
+    text: "Une frise des buts et cartons, minute par minute, des deux côtés.",
+  },
+  {
+    emoji: "📊",
+    title: "Statistiques",
+    text: "Possession, tirs, xG, classement du championnat et confrontations passées.",
+  },
+  {
+    emoji: "🎯",
+    title: "Détail des points",
+    text: "Score + boost + buteurs : tout est décomposé une fois le match terminé.",
+  },
+];
+
+const GROUP_FEATURES = [
+  {
+    emoji: "🌐",
+    title: "Privés ou publics",
+    text: "Un code d'invitation pour les intimes, ou un groupe public que tout le monde peut rejoindre.",
+  },
+  {
+    emoji: "🪙",
+    title: "Cagnotte commune",
+    text: "Chacun dépose ses pièces ; le solde est remboursé au prorata si tu quittes le groupe.",
+  },
+  {
+    emoji: "🎨",
+    title: "Cosmétiques de groupe",
+    text: "Le propriétaire dépense la cagnotte en fonds, icônes et titres réservés au groupe.",
   },
 ];
 
@@ -302,8 +343,39 @@ export default function Home() {
         </RevealGroup>
       </Band>
 
-      {/* Scoring */}
+      {/* Match experience */}
       <Band>
+        <Reveal className="mx-auto max-w-xl text-center">
+          <Eyebrow>Chaque match</Eyebrow>
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Vis le match en entier
+          </h2>
+          <p className="mt-3 text-muted">
+            Compositions, faits de match, stats — et le détail de tes points une
+            fois le coup de sifflet final donné.
+          </p>
+        </Reveal>
+
+        <RevealGroup className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {MATCH_FEATURES.map(({ emoji, title, text }) => (
+            <RevealItem
+              key={title}
+              className="rounded-2xl border border-border bg-surface p-6"
+            >
+              <div className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/10 text-xl">
+                {emoji}
+              </div>
+              <h3 className="mt-4 text-lg font-semibold tracking-tight">
+                {title}
+              </h3>
+              <p className="mt-1 text-sm text-muted">{text}</p>
+            </RevealItem>
+          ))}
+        </RevealGroup>
+      </Band>
+
+      {/* Scoring */}
+      <Band alt>
         <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
           <Reveal>
             <Eyebrow>Le barème</Eyebrow>
@@ -338,7 +410,7 @@ export default function Home() {
       </Band>
 
       {/* Podium / rewards */}
-      <Band alt>
+      <Band>
         <Reveal className="mx-auto max-w-xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/[0.06] px-3 py-1 text-xs font-medium text-gold">
             <CrownIcon className="size-4" />
@@ -375,7 +447,7 @@ export default function Home() {
       </Band>
 
       {/* Rewards · cosmetics · badges */}
-      <Band>
+      <Band alt>
         <Reveal className="mx-auto max-w-xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/[0.06] px-3 py-1 text-xs font-medium text-accent">
             <span className="size-1.5 rounded-full bg-accent" />
@@ -400,8 +472,9 @@ export default function Home() {
               <h3 className="text-lg font-semibold tracking-tight">Badges</h3>
             </div>
             <p className="mt-3 text-sm text-muted">
-              Des hauts faits à décrocher au fil de tes pronostics — séries,
-              scores parfaits, sommets du classement.
+              Des hauts faits sur cinq thèmes — pronostics, buteurs, amis,
+              cosmétiques, dépenses — chacun avec son badge et son taux de
+              réussite.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               {BADGES.map((b) => (
@@ -478,7 +551,7 @@ export default function Home() {
       </Band>
 
       {/* Friends / social */}
-      <Band alt>
+      <Band>
         <Reveal className="mx-auto max-w-xl text-center">
           <Eyebrow>Amis</Eyebrow>
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
@@ -499,6 +572,37 @@ export default function Home() {
               <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/10 text-accent">
                 <Icon className="size-5" />
               </span>
+              <h3 className="mt-4 text-lg font-semibold tracking-tight">
+                {title}
+              </h3>
+              <p className="mt-1 text-sm text-muted">{text}</p>
+            </RevealItem>
+          ))}
+        </RevealGroup>
+      </Band>
+
+      {/* Groups */}
+      <Band alt>
+        <Reveal className="mx-auto max-w-xl text-center">
+          <Eyebrow>Groupes</Eyebrow>
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Formez vos équipes
+          </h2>
+          <p className="mt-3 text-muted">
+            Un classement privé en plus du mondial, une cagnotte commune et des
+            cosmétiques rien que pour le groupe.
+          </p>
+        </Reveal>
+
+        <RevealGroup className="mx-auto mt-12 grid max-w-4xl gap-4 sm:grid-cols-3">
+          {GROUP_FEATURES.map(({ emoji, title, text }) => (
+            <RevealItem
+              key={title}
+              className="rounded-2xl border border-border bg-surface p-6"
+            >
+              <div className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/10 text-xl">
+                {emoji}
+              </div>
               <h3 className="mt-4 text-lg font-semibold tracking-tight">
                 {title}
               </h3>
