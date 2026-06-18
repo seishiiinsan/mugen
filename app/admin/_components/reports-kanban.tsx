@@ -221,6 +221,8 @@ function DetailPanel({
   const [saved, setSaved] = useState(false);
   const [granting, startGrant] = useTransition();
   const [badgeMsg, setBadgeMsg] = useState<string | null>(null);
+  const [granted, setGranted] = useState(false);
+  const hasBadge = report.reporterHasBugHunter || granted;
   const cat = REPORT_CATEGORY_META[report.category];
 
   const save = () => {
@@ -237,6 +239,7 @@ function DetailPanel({
     startGrant(async () => {
       const r = await grantBugHunter(report.userId!);
       setBadgeMsg(r.message);
+      if (r.ok) setGranted(true);
     });
   };
 
@@ -338,16 +341,27 @@ function DetailPanel({
               Récompense
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={grantBadge}
-                disabled={granting}
-                className="press inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:border-border-strong disabled:opacity-60"
-              >
-                <BadgeIcon className="size-4 text-accent" />
-                {granting ? "…" : "Attribuer le badge Bug hunter"}
-              </button>
-              {badgeMsg && <span className="text-xs text-muted">{badgeMsg}</span>}
+              {hasBadge ? (
+                <span className="inline-flex items-center gap-1.5 text-sm text-success">
+                  <BadgeIcon className="size-4" />
+                  Possède déjà le badge Bug hunter
+                </span>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={grantBadge}
+                    disabled={granting}
+                    className="press inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:border-border-strong disabled:opacity-60"
+                  >
+                    <BadgeIcon className="size-4 text-accent" />
+                    {granting ? "…" : "Attribuer le badge Bug hunter"}
+                  </button>
+                  {badgeMsg && (
+                    <span className="text-xs text-muted">{badgeMsg}</span>
+                  )}
+                </>
+              )}
             </div>
           </div>
         )}

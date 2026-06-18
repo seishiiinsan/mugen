@@ -1002,6 +1002,7 @@ interface AdminReportRow extends MyReportRow {
   user_id: string | null;
   username: string | null;
   admin_notes: string | null;
+  reporter_has_bughunter: boolean | null;
 }
 
 /** Every report with its author (admin only — RPC enforces the guard). */
@@ -1023,6 +1024,7 @@ export async function getAdminReports(): Promise<Report[]> {
     status: r.status,
     pageUrl: r.page_url,
     adminNotes: r.admin_notes,
+    reporterHasBugHunter: r.reporter_has_bughunter ?? false,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   }));

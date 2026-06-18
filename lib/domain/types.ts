@@ -208,6 +208,8 @@ export interface Report {
   pageUrl?: string | null;
   /** Admin-only triage notes. */
   adminNotes?: string | null;
+  /** Admin view only: the author already owns the Bug hunter badge. */
+  reporterHasBugHunter?: boolean;
   createdAt: string;
   updatedAt: string;
 }
