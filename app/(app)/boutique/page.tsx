@@ -3,25 +3,41 @@ import {
   canClaimDaily,
   getCurrentUser,
   getFriendsOwnedItems,
+  getGroupShopItems,
   getMyFriends,
   getMyOwnedItems,
+  getOwnedGroupsWithPot,
   getShopItems,
 } from "@/lib/data";
+import type { GroupShopItem } from "@/lib/domain/types";
 import { DAILY_BONUS } from "@/lib/domain/economy";
 import { CoinIcon, ShopIcon } from "../_components/icons";
 import { DailyBonus } from "./_components/daily-bonus";
+import { GroupShopSection } from "./_components/group-shop-section";
 import { ShopTabs } from "./_components/shop-tabs";
 
 export default async function BoutiquePage() {
-  const [me, items, claimable, owned, friends, friendOwned] = await Promise.all([
-    getCurrentUser(),
-    getShopItems(),
-    canClaimDaily(),
-    getMyOwnedItems(),
-    getMyFriends(),
-    getFriendsOwnedItems(),
-  ]);
+  const [me, items, claimable, owned, friends, friendOwned, ownedGroups] =
+    await Promise.all([
+      getCurrentUser(),
+      getShopItems(),
+      canClaimDaily(),
+      getMyOwnedItems(),
+      getMyFriends(),
+      getFriendsOwnedItems(),
+      getOwnedGroupsWithPot(),
+    ]);
   if (!me) redirect("/login");
+
+  // Group-cosmetic catalogs (per owned group: same items, group-specific owned
+  // flags). Only owners can spend a pot, so the selector lists owned groups.
+  const groupCatalogs: Record<string, GroupShopItem[]> = Object.fromEntries(
+    await Promise.all(
+      ownedGroups.map(
+        async (g) => [g.id, await getGroupShopItems(g.id)] as const,
+      ),
+    ),
+  );
 
   const tabs = [
     {
@@ -75,6 +91,10 @@ export default async function BoutiquePage() {
         friends={friends}
         friendOwned={friendOwned}
       />
+
+      {ownedGroups.length > 0 && (
+        <GroupShopSection groups={ownedGroups} catalogs={groupCatalogs} />
+      )}
     </section>
   );
 }

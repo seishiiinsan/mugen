@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { getCurrentUser, getGroup, getGroupLeaderboard } from "@/lib/data";
+import {
+  getCurrentUser,
+  getGroup,
+  getGroupLeaderboard,
+  getGroupPot,
+} from "@/lib/data";
 import type { LeaderboardEntry } from "@/lib/domain/types";
 import { UserAvatar } from "../../_components/user-avatar";
 import { CopyCode } from "../_components/copy-code";
 import { GroupActions } from "../_components/group-actions";
+import { GroupPotDeposit } from "../_components/group-pot-deposit";
 
 const MEDAL = ["text-gold", "text-silver", "text-bronze"] as const;
 
@@ -70,7 +76,10 @@ export default async function GroupDetailPage(
   if (!me) redirect("/login");
   if (!group) notFound();
 
-  const members = await getGroupLeaderboard(groupId);
+  const [members, pot] = await Promise.all([
+    getGroupLeaderboard(groupId),
+    getGroupPot(groupId),
+  ]);
   const isOwner = group.ownerId === me.id;
 
   const month = new Intl.DateTimeFormat("fr-FR", {
@@ -104,11 +113,30 @@ export default async function GroupDetailPage(
           <GroupActions groupId={group.id} isOwner={isOwner} />
         </div>
 
-        <div className="mt-3 flex items-center gap-2 text-sm text-muted">
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
           <span className="text-xs text-faint">Code d&apos;invitation</span>
           <CopyCode code={group.inviteCode} />
+          {isOwner && (
+            <Link
+              href={`/groupes/${group.id}/parametres`}
+              className="ml-auto rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-border-strong hover:text-foreground"
+            >
+              Paramètres du groupe
+            </Link>
+          )}
         </div>
       </header>
+
+      {pot && (
+        <div className="mb-5">
+          <GroupPotDeposit
+            groupId={group.id}
+            potBalance={pot.balance}
+            myContribution={pot.myContribution}
+            myBalance={me.coins}
+          />
+        </div>
+      )}
 
       {members.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">

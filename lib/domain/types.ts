@@ -125,6 +125,8 @@ export interface ShopItem {
   equipped: boolean;
   /** How many times the item was earned (≥1). Only >1 for repeatable badges. */
   count?: number;
+  /** Whether the item is purchasable/giftable. Reward-only items are false. */
+  active?: boolean;
 }
 
 /** A coin ledger entry. */
@@ -142,6 +144,66 @@ export interface Group {
   ownerId: string;
   memberCount: number;
   createdAt: string;
+}
+
+/** A public group surfaced in the discovery modal. */
+export interface PublicGroup {
+  id: string;
+  name: string;
+  memberCount: number;
+  ownerId: string;
+  isMember: boolean;
+  /** Minimum level required to join (0 = none). */
+  minLevel: number;
+  /** Member cap, or null when unlimited. */
+  maxMembers: number | null;
+}
+
+/** A group's join requirements/state, by id or invite code. */
+export interface GroupGate {
+  groupId: string;
+  name: string;
+  minLevel: number;
+  maxMembers: number | null;
+  memberCount: number;
+  isMember: boolean;
+  isPublic: boolean;
+}
+
+/** Group cosmetic families (priced in the group pot, owner-managed). */
+export type GroupCosmeticKind = "group_bg" | "group_icon" | "group_title";
+
+/** A group the caller owns, with its current pot balance (shop selector). */
+export interface OwnedGroupPot {
+  id: string;
+  name: string;
+  potBalance: number;
+}
+
+/** A group's pot for the viewer (member-gated). */
+export interface GroupPot {
+  balance: number;
+  myContribution: number;
+}
+
+/** A group-shop catalog entry with the group's ownership flag. */
+export interface GroupShopItem {
+  key: string;
+  kind: GroupCosmeticKind;
+  name: string;
+  description: string | null;
+  price: number;
+  owned: boolean;
+}
+
+/** A group cosmetic owned by a group, with its equipped state (owner view). */
+export interface GroupOwnedItem {
+  key: string;
+  kind: GroupCosmeticKind;
+  name: string;
+  description: string | null;
+  price: number;
+  equipped: boolean;
 }
 
 /** A row in the admin "Joueurs" list. */
