@@ -9,12 +9,14 @@ import {
   getOwnedGroupsWithPot,
   getShopItems,
 } from "@/lib/data";
-import type { GroupShopItem } from "@/lib/domain/types";
+import type { GroupShopItem, ShopItem } from "@/lib/domain/types";
 import { DAILY_BONUS } from "@/lib/domain/economy";
 import { CoinIcon, ShopIcon } from "../_components/icons";
 import { DailyBonus } from "./_components/daily-bonus";
 import { GroupShopSection } from "./_components/group-shop-section";
-import { ShopTabs } from "./_components/shop-tabs";
+import { OwnedTabs } from "./_components/owned-tabs";
+import { ShopGrid } from "./_components/shop-grid";
+import { ShopTabs, type ShopTab } from "./_components/shop-tabs";
 
 export default async function BoutiquePage() {
   const [me, items, claimable, owned, friends, friendOwned, ownedGroups] =
@@ -39,25 +41,54 @@ export default async function BoutiquePage() {
     ),
   );
 
-  const tabs = [
-    {
-      id: "frame",
-      label: "Cadres",
-      items: items.filter((i) => i.kind === "frame"),
-    },
-    {
-      id: "color",
-      label: "Couleurs",
-      items: items.filter((i) => i.kind === "color"),
-    },
-    {
-      id: "title",
-      label: "Titres",
-      items: items.filter((i) => i.kind === "title"),
-    },
-    // Everything the player owns, every kind included (badges, granted rewards…).
+  const grid = (kind: ShopItem["kind"]) => {
+    const list = items.filter((i) => i.kind === kind);
+    return {
+      count: list.length,
+      content: (
+        <ShopGrid
+          items={list}
+          balance={me.coins}
+          friends={friends}
+          friendOwned={friendOwned}
+        />
+      ),
+    };
+  };
+
+  const tabs: ShopTab[] = [
+    { id: "frame", label: "Cadres", ...grid("frame") },
+    { id: "color", label: "Couleurs", ...grid("color") },
+    { id: "title", label: "Titres", ...grid("title") },
+    // Cosmétiques de groupe — entre « Titres » et « Possédés », owners seulement.
+    ...(ownedGroups.length > 0
+      ? [
+          {
+            id: "group",
+            label: "Cosmétiques de groupes",
+            content: (
+              <GroupShopSection groups={ownedGroups} catalogs={groupCatalogs} />
+            ),
+          } satisfies ShopTab,
+        ]
+      : []),
+    // Tout ce que le joueur possède, trié par type via des sous-onglets.
     ...(owned.length > 0
-      ? [{ id: "owned", label: "Possédés", items: owned }]
+      ? [
+          {
+            id: "owned",
+            label: "Possédés",
+            count: owned.length,
+            content: (
+              <OwnedTabs
+                items={owned}
+                balance={me.coins}
+                friends={friends}
+                friendOwned={friendOwned}
+              />
+            ),
+          } satisfies ShopTab,
+        ]
       : []),
   ];
 
@@ -85,16 +116,7 @@ export default async function BoutiquePage() {
         <DailyBonus claimable={claimable} amount={DAILY_BONUS} />
       </div>
 
-      <ShopTabs
-        tabs={tabs}
-        balance={me.coins}
-        friends={friends}
-        friendOwned={friendOwned}
-      />
-
-      {ownedGroups.length > 0 && (
-        <GroupShopSection groups={ownedGroups} catalogs={groupCatalogs} />
-      )}
+      <ShopTabs tabs={tabs} />
     </section>
   );
 }

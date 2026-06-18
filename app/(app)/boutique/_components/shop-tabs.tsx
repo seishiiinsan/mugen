@@ -1,28 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import type { FriendSummary, ShopItem } from "@/lib/domain/types";
-import { ShopItemCard } from "./shop-item-card";
+import { useState, type ReactNode } from "react";
 
-type Tab = {
+export type ShopTab = {
   id: string;
   label: string;
-  items: ShopItem[];
+  /** Optional count badge shown next to the label. */
+  count?: number;
+  content: ReactNode;
 };
 
-export function ShopTabs({
-  tabs,
-  balance,
-  friends,
-  friendOwned,
-}: {
-  tabs: Tab[];
-  balance: number;
-  friends: FriendSummary[];
-  friendOwned: Record<string, string[]>;
-}) {
+/** Generic tab bar for the shop; each tab supplies its own rendered content. */
+export function ShopTabs({ tabs }: { tabs: ShopTab[] }) {
   const [active, setActive] = useState(tabs[0]?.id ?? "");
-  const current = tabs.find((t) => t.id === active);
+  const current = tabs.find((t) => t.id === active) ?? tabs[0];
 
   return (
     <div>
@@ -44,30 +35,14 @@ export function ShopTabs({
             }`}
           >
             {tab.label}
-            <span className="ml-1.5 text-[11px] opacity-60">
-              {tab.items.length}
-            </span>
+            {tab.count != null && (
+              <span className="ml-1.5 text-[11px] opacity-60">{tab.count}</span>
+            )}
           </button>
         ))}
       </div>
 
-      {current && current.items.length > 0 ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {current.items.map((item) => (
-            <ShopItemCard
-              key={item.key}
-              item={item}
-              balance={balance}
-              friends={friends}
-              friendOwned={friendOwned}
-            />
-          ))}
-        </div>
-      ) : (
-        <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">
-          Aucun article dans cette catégorie.
-        </p>
-      )}
+      {current?.content}
     </div>
   );
 }
