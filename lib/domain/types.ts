@@ -125,6 +125,8 @@ export interface ShopItem {
   equipped: boolean;
   /** How many times the item was earned (≥1). Only >1 for repeatable badges. */
   count?: number;
+  /** Whether the item is purchasable/giftable. Reward-only items are false. */
+  active?: boolean;
 }
 
 /** A coin ledger entry. */

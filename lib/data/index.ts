@@ -942,7 +942,7 @@ export async function getMyOwnedItems(): Promise<ShopItem[]> {
     supabase
       .from("user_items")
       .select(
-        "item_key, count, shop_items!inner(kind, name, description, price, sort)",
+        "item_key, count, shop_items!inner(kind, name, description, price, sort, active)",
       )
       .eq("user_id", user.id),
     supabase
@@ -973,6 +973,7 @@ export async function getMyOwnedItems(): Promise<ShopItem[]> {
       description: string | null;
       price: number;
       sort: number;
+      active: boolean;
     };
   };
   return ((data as Row[] | null) ?? [])
@@ -991,6 +992,7 @@ export async function getMyOwnedItems(): Promise<ShopItem[]> {
       owned: true,
       equipped: equippedSet.has(r.item_key),
       count: r.count ?? 1,
+      active: r.shop_items.active,
     }));
 }
 

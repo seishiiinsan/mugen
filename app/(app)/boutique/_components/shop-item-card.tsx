@@ -128,8 +128,9 @@ export function ShopItemCard({
           )}
         </div>
 
-        {/* Offrir à un ami — cosmétiques uniquement (pas les badges). */}
-        {item.kind !== "badge" && friends.length > 0 && (
+        {/* Offrir à un ami — cosmétiques achetables uniquement (ni badges, ni
+            récompenses non vendables comme « First »). */}
+        {item.kind !== "badge" && item.active !== false && friends.length > 0 && (
           <GiftButton
             itemKey={item.key}
             itemName={item.name}
