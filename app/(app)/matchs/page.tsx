@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import type { Fixture } from "@/lib/domain/types";
-import { getFixtures, getMyPredictions } from "@/lib/data";
+import { getActualScorers, getFixtures, getMyPredictions } from "@/lib/data";
 import { FixtureCard } from "../_components/fixture-card";
 import { MatchesIcon } from "../_components/icons";
 import { FilterBar } from "./_components/filter-bar";
@@ -69,6 +69,17 @@ export default async function MatchsPage(props: PageProps<"/matchs">) {
   const page = Math.min(requestedPage, totalPages);
   const slice = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  // Real scorers for the visible finished matches the user picked scorers on,
+  // so settled cards can show the goalscorer points breakdown.
+  const scorers = await getActualScorers(
+    slice
+      .filter((f) => {
+        const p = byFixture.get(f.id);
+        return f.status === "finished" && p != null && p.scorers.length > 0;
+      })
+      .map((f) => f.id),
+  );
+
   function pageHref(p: number): string {
     const params = new URLSearchParams();
     if (status) params.set("status", status);
@@ -131,6 +142,7 @@ export default async function MatchsPage(props: PageProps<"/matchs">) {
                 <FixtureCard
                   fixture={fixture}
                   prediction={byFixture.get(fixture.id)}
+                  actualScorers={scorers.get(fixture.id) ?? null}
                 />
               </Fragment>
             );

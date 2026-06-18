@@ -63,8 +63,10 @@ import { ensureProfile } from "@/lib/supabase/ensure-profile";
 import {
   fetchFixtureById,
   fetchFixturesByRange,
+  fetchScorers,
   isSportsApiConfigured,
 } from "@/lib/sports";
+import type { MatchScorers } from "@/lib/bzzoiro/match-extras";
 
 /** A row from the `predictions` table. */
 interface PredictionRow {
@@ -302,6 +304,23 @@ export async function getFixturesByIds(ids: number[]): Promise<Fixture[]> {
 
   const cached = ((data as FixtureRow[] | null) ?? []).map(mapFixtureRow);
   return refreshStaleFixtures(cached);
+}
+
+/**
+ * Real goalscorers (ids + names, own goals excluded) for several fixtures,
+ * fetched in parallel. Lets settled match cards show the goalscorer-market
+ * breakdown (who scored, what each pick earned) without re-deriving it server
+ * side. Each fixture degrades to empty on error; underlying calls are cached.
+ */
+export async function getActualScorers(
+  fixtureIds: number[],
+): Promise<Map<number, MatchScorers>> {
+  const ids = [...new Set(fixtureIds)];
+  if (ids.length === 0) return new Map();
+  const entries = await Promise.all(
+    ids.map(async (id) => [id, await fetchScorers(id)] as const),
+  );
+  return new Map(entries);
 }
 
 export async function getMyPredictions(): Promise<Prediction[]> {
