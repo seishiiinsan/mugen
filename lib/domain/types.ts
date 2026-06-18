@@ -151,6 +151,21 @@ export interface PublicGroup {
   memberCount: number;
   ownerId: string;
   isMember: boolean;
+  /** Minimum level required to join (0 = none). */
+  minLevel: number;
+  /** Member cap, or null when unlimited. */
+  maxMembers: number | null;
+}
+
+/** A group's join requirements/state, by id or invite code. */
+export interface GroupGate {
+  groupId: string;
+  name: string;
+  minLevel: number;
+  maxMembers: number | null;
+  memberCount: number;
+  isMember: boolean;
+  isPublic: boolean;
 }
 
 /** Group cosmetic families (priced in the group pot, owner-managed). */

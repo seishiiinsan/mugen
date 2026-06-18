@@ -95,14 +95,27 @@ function Modal({
                   {g.name.charAt(0).toUpperCase()}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{g.name}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="truncate font-medium">{g.name}</span>
+                    {g.minLevel > 0 && (
+                      <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-muted">
+                        Niv. {g.minLevel}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-faint">
-                    {g.memberCount} membre{g.memberCount > 1 ? "s" : ""}
+                    {g.memberCount}
+                    {g.maxMembers != null ? `/${g.maxMembers}` : ""} membre
+                    {g.memberCount > 1 ? "s" : ""}
                   </div>
                 </div>
                 {g.isMember ? (
                   <span className="shrink-0 text-xs font-medium text-faint">
                     Déjà membre
+                  </span>
+                ) : g.maxMembers != null && g.memberCount >= g.maxMembers ? (
+                  <span className="shrink-0 text-xs font-medium text-faint">
+                    Complet
                   </span>
                 ) : (
                   <button

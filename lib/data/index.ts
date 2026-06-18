@@ -26,6 +26,7 @@ import type {
   Group,
   GroupOwnedItem,
   GroupPot,
+  GroupGate,
   GroupShopItem,
   OwnedGroupPot,
   PublicGroup,
@@ -671,6 +672,8 @@ export async function getPublicGroups(query?: string): Promise<PublicGroup[]> {
           member_count: number;
           owner_id: string;
           is_member: boolean;
+          min_level: number;
+          max_members: number | null;
         }[]
       | null) ?? []
   ).map((r) => ({
@@ -679,7 +682,48 @@ export async function getPublicGroups(query?: string): Promise<PublicGroup[]> {
     memberCount: Number(r.member_count),
     ownerId: r.owner_id,
     isMember: Boolean(r.is_member),
+    minLevel: Number(r.min_level ?? 0),
+    maxMembers: r.max_members == null ? null : Number(r.max_members),
   }));
+}
+
+/** A group's join requirements/state, by id or invite code (gate checks). */
+export async function getGroupGate(opts: {
+  groupId?: string;
+  code?: string;
+}): Promise<GroupGate | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("group_gate", {
+    p_group: opts.groupId ?? null,
+    p_code: opts.code ?? null,
+  });
+  const row = (
+    data as
+      | {
+          group_id: string;
+          name: string;
+          min_level: number;
+          max_members: number | null;
+          member_count: number;
+          is_member: boolean;
+          is_public: boolean;
+        }[]
+      | null
+  )?.[0];
+  if (error || !row) {
+    if (error) console.error("[getGroupGate]", error);
+    return null;
+  }
+  return {
+    groupId: row.group_id,
+    name: row.name,
+    minLevel: Number(row.min_level ?? 0),
+    maxMembers: row.max_members == null ? null : Number(row.max_members),
+    memberCount: Number(row.member_count),
+    isMember: Boolean(row.is_member),
+    isPublic: Boolean(row.is_public),
+  };
 }
 
 interface GroupLeaderboardRow {

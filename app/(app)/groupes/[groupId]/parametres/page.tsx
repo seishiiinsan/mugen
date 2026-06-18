@@ -3,11 +3,13 @@ import { notFound, redirect } from "next/navigation";
 import {
   getCurrentUser,
   getGroup,
+  getGroupGate,
   getGroupOwnedItems,
   getGroupPot,
 } from "@/lib/data";
 import { CoinIcon } from "../../../_components/icons";
 import { GroupCosmeticsManager } from "../../_components/group-cosmetics-manager";
+import { GroupSettingsForm } from "../../_components/group-settings-form";
 
 export default async function GroupSettingsPage(
   props: PageProps<"/groupes/[groupId]/parametres">,
@@ -20,9 +22,10 @@ export default async function GroupSettingsPage(
   // Owner-only page.
   if (group.ownerId !== me.id) notFound();
 
-  const [items, pot] = await Promise.all([
+  const [items, pot, gate] = await Promise.all([
     getGroupOwnedItems(groupId),
     getGroupPot(groupId),
+    getGroupGate({ groupId }),
   ]);
 
   return (
@@ -40,7 +43,7 @@ export default async function GroupSettingsPage(
             Paramètres du groupe
           </h1>
           <p className="text-sm text-muted">
-            Équipe les cosmétiques achetés avec la cagnotte.
+            Réglages d&apos;accès et cosmétiques de la cagnotte.
           </p>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-gradient-to-br from-accent/15 to-accent/5 px-3 py-1.5 font-mono text-sm font-semibold tabular-nums text-accent">
@@ -49,6 +52,23 @@ export default async function GroupSettingsPage(
         </span>
       </header>
 
+      <div className="mb-7">
+        <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-faint">
+          Réglages
+        </h2>
+        <GroupSettingsForm
+          groupId={group.id}
+          initialName={group.name}
+          initialPublic={gate?.isPublic ?? false}
+          initialMaxMembers={gate?.maxMembers ?? null}
+          initialMinLevel={gate?.minLevel ?? 0}
+          memberCount={gate?.memberCount ?? group.memberCount}
+        />
+      </div>
+
+      <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-faint">
+        Cosmétiques
+      </h2>
       {items.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">
           Ce groupe ne possède aucun cosmétique. Rends-toi dans la boutique,
