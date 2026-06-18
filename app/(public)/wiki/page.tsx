@@ -21,7 +21,10 @@ import {
   BadgeIcon,
   CoinIcon,
   CrownIcon,
+  FriendsIcon,
+  GiftIcon,
   GroupsIcon,
+  MatchesIcon,
   PredictionsIcon,
   RankingIcon,
   ShopIcon,
@@ -33,7 +36,7 @@ import { ScoringPlayground } from "./_components/scoring-playground";
 export const metadata: Metadata = {
   title: "Wiki · Mugen",
   description:
-    "Toutes les règles de Mugen : barème, boosts, classement mensuel, pièces, niveaux, succès et groupes privés.",
+    "Toutes les règles de Mugen : barème, boosts, page d'un match, classements, pièces, niveaux, succès, amis et groupes.",
 };
 
 const SECTIONS = [
@@ -42,11 +45,13 @@ const SECTIONS = [
   { id: "bareme", label: "Le barème" },
   { id: "buteurs", label: "Les buteurs" },
   { id: "boosts", label: "Les boosts" },
-  { id: "classement", label: "Classement mensuel" },
+  { id: "match", label: "La page d'un match" },
+  { id: "classement", label: "Classements" },
   { id: "economie", label: "Pièces & boutique" },
   { id: "niveaux", label: "Niveaux & XP" },
   { id: "succes", label: "Succès & badges" },
-  { id: "groupes", label: "Groupes privés" },
+  { id: "amis", label: "Amis & profils" },
+  { id: "groupes", label: "Groupes" },
 ];
 
 // Goalscorer barème, sourced from the live market constants.
@@ -305,14 +310,82 @@ export default function WikiPage() {
           </Section>
 
           <Section
+            id="match"
+            icon={<MatchesIcon className="size-5" />}
+            eyebrow="Suivre"
+            title="La page d'un match"
+          >
+            <p className="-mt-2 mb-5 text-muted">
+              Chaque match a sa fiche : tes pronos d&apos;un côté, tous les détails
+              de la rencontre de l&apos;autre.
+            </p>
+            <RevealGroup className="grid gap-4 sm:grid-cols-2">
+              {[
+                {
+                  t: "Compositions",
+                  d: "Le terrain affiche la vraie formation (4-4-2, 4-2-3-1…), titulaires et bancs des deux équipes dépliés en un clic. C'est aussi là que tu choisis tes buteurs, rangés par poste.",
+                },
+                {
+                  t: "Faits de match",
+                  d: "Une frise chronologique à deux camps : buts ⚽, passeurs et cartons 🟨🟥, minute par minute.",
+                },
+                {
+                  t: "Stats & classement",
+                  d: "Possession, tirs, xG… le classement du championnat avec tes deux équipes surlignées, et l'historique des confrontations quand il y en a.",
+                },
+                {
+                  t: "Le détail de tes points",
+                  d: "Sur un match terminé, ta carte décompose tout : score de base + boost + buteurs = total. Chaque buteur passe au vert (réussi, avec ses points) ou au rouge (raté, −2).",
+                },
+              ].map((x) => (
+                <RevealItem
+                  key={x.t}
+                  className="rounded-2xl border border-border bg-surface p-5"
+                >
+                  <h3 className="font-semibold">{x.t}</h3>
+                  <p className="mt-1.5 text-sm text-muted">{x.d}</p>
+                </RevealItem>
+              ))}
+            </RevealGroup>
+          </Section>
+
+          <Section
             id="classement"
             icon={<RankingIcon className="size-5" />}
             eyebrow="Compétition"
-            title="Classement mensuel"
+            title="Classements"
           >
+            <p className="-mt-2 mb-5 text-muted">
+              Trois classements coexistent : un récompensé chaque mois, et deux de
+              prestige qui ne se remettent jamais à zéro.
+            </p>
+            <RevealGroup className="mb-6 grid gap-4 sm:grid-cols-3">
+              {[
+                {
+                  t: "Mensuel",
+                  d: "Le classement mondial, remis à zéro le 1ᵉʳ de chaque mois. Le seul qui rapporte des pièces et des badges.",
+                },
+                {
+                  t: "Plus riches",
+                  d: "Le solde de pièces de chacun. Jamais remis à zéro — du pur prestige.",
+                },
+                {
+                  t: "Plus d'XP",
+                  d: "L'expérience à vie accumulée. Jamais remis à zéro non plus.",
+                },
+              ].map((x) => (
+                <RevealItem
+                  key={x.t}
+                  className="rounded-2xl border border-border bg-surface p-5"
+                >
+                  <h3 className="font-semibold">{x.t}</h3>
+                  <p className="mt-1.5 text-sm text-muted">{x.d}</p>
+                </RevealItem>
+              ))}
+            </RevealGroup>
             <Card>
               <p className="text-muted">
-                Le classement mondial repart de zéro le 1ᵉʳ de chaque mois. Tout
+                Le classement mensuel repart de zéro le 1ᵉʳ de chaque mois. Tout
                 le monde recommence à égalité. En fin de mois, les meilleurs
                 repartent avec des pièces :
               </p>
@@ -369,6 +442,16 @@ export default function WikiPage() {
                 </RevealItem>
               ))}
             </RevealGroup>
+            <p className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-surface-2/50 px-4 py-3 text-sm text-muted">
+              <GiftIcon className="mt-0.5 size-4 shrink-0 text-accent" />
+              <span>
+                Tu peux <strong className="text-foreground">offrir</strong> un
+                cadre, une couleur ou un titre à un ami avec le bouton 🎁 (les
+                doublons sont évités). Tout ce que tu possèdes se retrouve dans
+                l&apos;onglet <strong className="text-foreground">« Possédés »</strong>,
+                rangé par type, et s&apos;équipe d&apos;un clic.
+              </span>
+            </p>
           </Section>
 
           <Section
@@ -415,8 +498,12 @@ export default function WikiPage() {
             title="Succès & badges"
           >
             <p className="-mt-2 mb-5 text-muted">
-              Des objectifs débloqués automatiquement au fil de tes pronostics.
-              Chacun rapporte pièces et XP, et souvent un badge à exhiber.
+              Des objectifs débloqués automatiquement, rangés par thème
+              (pronostics, buteurs, amis, cosmétiques, monnaie). Chacun rapporte
+              pièces, XP et un badge à exhiber, et affiche le pourcentage de
+              joueurs qui l&apos;ont décroché. Tout est{" "}
+              <strong className="text-foreground">rétroactif</strong> : ce que tu
+              avais déjà accompli avant l&apos;ajout d&apos;un succès est reconnu.
             </p>
             <RevealGroup className="grid gap-3 sm:grid-cols-2">
               {ACHIEVEMENTS.map((a) => (
@@ -444,19 +531,80 @@ export default function WikiPage() {
           </Section>
 
           <Section
+            id="amis"
+            icon={<FriendsIcon className="size-5" />}
+            eyebrow="Social"
+            title="Amis & profils"
+          >
+            <RevealGroup className="grid gap-4 sm:grid-cols-2">
+              {[
+                {
+                  t: "Ajoute des amis",
+                  d: "Recherche un joueur par pseudo, envoie une demande, accepte ou refuse celles que tu reçois. Une cloche 🔔 te prévient des demandes et des acceptations.",
+                },
+                {
+                  t: "Profils publics",
+                  d: "Visite le profil d'un joueur pour voir son niveau, ses statistiques, ses succès et ses pronostics à venir.",
+                },
+                {
+                  t: "Confidentialité à la carte",
+                  d: "Choisis séparément qui voit tes pronostics, tes stats, tes succès et ta liste d'amis : tout le monde, amis seulement, ou toi uniquement.",
+                },
+                {
+                  t: "Cadeaux",
+                  d: "Offre un cadre, une couleur ou un titre à un ami depuis la boutique (🎁). Il le reçoit dans son inventaire, sans risque de doublon.",
+                },
+              ].map((x) => (
+                <RevealItem
+                  key={x.t}
+                  className="rounded-2xl border border-border bg-surface p-5"
+                >
+                  <h3 className="font-semibold">{x.t}</h3>
+                  <p className="mt-1.5 text-sm text-muted">{x.d}</p>
+                </RevealItem>
+              ))}
+            </RevealGroup>
+          </Section>
+
+          <Section
             id="groupes"
             icon={<GroupsIcon className="size-5" />}
-            eyebrow="Entre amis"
-            title="Groupes privés"
+            eyebrow="En équipe"
+            title="Groupes"
           >
-            <Card>
-              <p className="text-muted">
-                Crée un groupe, partage son code d&apos;invitation, et compare-toi
-                à tes amis dans un classement mensuel privé — en plus du classement
-                mondial. Le créateur gère le groupe ; chacun pronostique
-                normalement, les points comptent partout.
-              </p>
-            </Card>
+            <p className="-mt-2 mb-5 text-muted">
+              Compare-toi à tes amis dans un classement mensuel privé — en plus du
+              classement mondial. Chacun pronostique normalement, les points
+              comptent partout.
+            </p>
+            <RevealGroup className="grid gap-4 sm:grid-cols-2">
+              {[
+                {
+                  t: "Privés ou publics",
+                  d: "Crée un groupe privé et partage son code d'invitation, ou un groupe public rejoignable par tous — la liste se parcourt et se cherche en direct depuis « Je n'ai pas de code ».",
+                },
+                {
+                  t: "Cagnotte commune",
+                  d: "Chaque membre dépose des pièces dans une cagnotte de groupe. Si tu pars ou que le groupe est supprimé, le solde est remboursé au prorata de ce que chacun a mis.",
+                },
+                {
+                  t: "Cosmétiques de groupe",
+                  d: "Le propriétaire dépense la cagnotte en fonds, icônes (drapeaux & co) et titres réservés au groupe.",
+                },
+                {
+                  t: "Réglages",
+                  d: "Le propriétaire ajuste le nom, la visibilité, le nombre maximum de membres et le niveau requis pour rejoindre.",
+                },
+              ].map((x) => (
+                <RevealItem
+                  key={x.t}
+                  className="rounded-2xl border border-border bg-surface p-5"
+                >
+                  <h3 className="font-semibold">{x.t}</h3>
+                  <p className="mt-1.5 text-sm text-muted">{x.d}</p>
+                </RevealItem>
+              ))}
+            </RevealGroup>
           </Section>
 
           {/* CTA */}
