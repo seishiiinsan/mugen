@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import {
   getCurrentUser,
   getFixturesByIds,
+  getIsAdmin,
   getMyAchievementKeys,
   getMyBadges,
   getMyBoostStock,
@@ -35,6 +36,7 @@ import {
   CrownIcon,
   FriendsIcon,
   InfoIcon,
+  LockIcon,
   LogoutIcon,
 } from "../_components/icons";
 
@@ -74,6 +76,7 @@ export default async function ProfilPage() {
     achievementKeys,
     level,
     friends,
+    isAdmin,
   ] = await Promise.all([
     getCurrentUser(),
     getMyMonthlyStats(),
@@ -83,6 +86,7 @@ export default async function ProfilPage() {
     getMyAchievementKeys(),
     getMyLevel(),
     getMyFriends(),
+    getIsAdmin(),
   ]);
   if (!me) redirect("/login");
 
@@ -497,6 +501,15 @@ export default async function ProfilPage() {
 
       {/* Account footer */}
       <footer className="flex flex-col items-center gap-1 border-t border-border pt-5">
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className="press inline-flex items-center gap-2 rounded-lg bg-accent/10 px-3 py-2 text-sm font-semibold text-accent transition-colors hover:bg-accent/15"
+          >
+            <LockIcon className="size-4" />
+            Panel admin
+          </Link>
+        )}
         <Link
           href="/signaler"
           className="press inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-faint transition-colors hover:bg-surface-2 hover:text-foreground"
