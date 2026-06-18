@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import {
@@ -53,8 +54,16 @@ export default async function LoginPage(props: PageProps<"/login">) {
 
         <Link
           href="/"
-          className="relative text-2xl font-bold tracking-tight"
+          className="relative flex items-center gap-2.5 text-2xl font-bold tracking-tight"
         >
+          <Image
+            src="/logo.png"
+            alt=""
+            width={36}
+            height={36}
+            priority
+            className="shrink-0"
+          />
           Mugen
         </Link>
 
@@ -89,8 +98,16 @@ export default async function LoginPage(props: PageProps<"/login">) {
         <div className="mx-auto w-full max-w-sm space-y-8">
           <Link
             href="/"
-            className="block text-3xl font-bold tracking-tight lg:hidden"
+            className="flex items-center gap-2.5 text-3xl font-bold tracking-tight lg:hidden"
           >
+            <Image
+              src="/logo.png"
+              alt=""
+              width={36}
+              height={36}
+              priority
+              className="shrink-0"
+            />
             Mugen
           </Link>
 

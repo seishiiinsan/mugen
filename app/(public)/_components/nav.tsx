@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -49,9 +50,17 @@ export function PublicNav() {
       <nav className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between gap-4 px-6">
         <Link
           href="/"
-          className="text-lg font-bold tracking-tight"
+          className="flex items-center gap-2 text-lg font-bold tracking-tight"
           onClick={() => setOpen(false)}
         >
+          <Image
+            src="/logo.png"
+            alt=""
+            width={28}
+            height={28}
+            priority
+            className="shrink-0"
+          />
           Mugen
         </Link>
 
