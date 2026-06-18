@@ -74,6 +74,17 @@ export function PredictionForm({
     });
   }
 
+  function removeScorer(id: number) {
+    setScorers((prev) => prev.filter((s) => s.id !== id));
+  }
+
+  // Picks not present in the current lineup feed (empty compo, or a different
+  // id-space than when they were saved) would otherwise be invisible AND stuck
+  // in the hidden field forever. Surface them as removable chips.
+  const orphanScorers = scorers.filter(
+    (s) => !scorerOptions.some((o) => o.id === s.id),
+  );
+
   return (
     <form
       action={action}
@@ -175,6 +186,28 @@ export function PredictionForm({
             {scorers.length}/{MAX_SCORERS}
           </span>
         </div>
+
+        {orphanScorers.length > 0 && (
+          <div className="mb-3">
+            <p className="mb-1.5 text-xs text-faint">Sélectionnés</p>
+            <div className="flex flex-wrap gap-1.5">
+              {orphanScorers.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => removeScorer(s.id)}
+                  title="Retirer ce buteur"
+                  className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/15"
+                >
+                  {s.name}
+                  <span aria-hidden className="text-[11px] text-accent/70">
+                    ✕
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {scorerOptions.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-3 text-center text-xs text-muted">
