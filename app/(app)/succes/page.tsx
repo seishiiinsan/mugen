@@ -1,25 +1,29 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
+  getAchievementRates,
   getCurrentUser,
   getMyAchievementKeys,
   getMyLevel,
 } from "@/lib/data";
 import { ACHIEVEMENTS } from "@/lib/domain/economy";
-import { BADGE_META } from "@/lib/domain/cosmetics";
-import { ChevronLeftIcon, CoinIcon } from "../_components/icons";
+import { ChevronLeftIcon } from "../_components/icons";
+import { AchievementsList } from "./achievements-list";
 
 export default async function SuccesPage() {
-  const [me, level, achievementKeys] = await Promise.all([
+  const [me, level, achievementKeys, rateMap] = await Promise.all([
     getCurrentUser(),
     getMyLevel(),
     getMyAchievementKeys(),
+    getAchievementRates(),
   ]);
   if (!me) redirect("/login");
 
   const unlocked = new Set(achievementKeys);
   const pct = Math.round((level.current / level.needed) * 100);
   const done = ACHIEVEMENTS.filter((a) => unlocked.has(a.key)).length;
+  const rates: Record<string, number> = {};
+  for (const [key, r] of rateMap) rates[key] = r.pct;
 
   return (
     <section className="space-y-6">
@@ -62,50 +66,12 @@ export default async function SuccesPage() {
         </div>
       </header>
 
-      {/* Achievements */}
+      {/* Achievements — tabbed by theme */}
       <div>
         <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-faint">
           Succès
         </h2>
-        <ul className="space-y-2">
-          {ACHIEVEMENTS.map((a) => {
-            const ok = unlocked.has(a.key);
-            const meta = a.badge ? BADGE_META[a.badge] : null;
-            return (
-              <li
-                key={a.key}
-                className={`flex items-center gap-3 rounded-lg border p-3 ${
-                  ok ? "border-accent/30 bg-accent/[0.05]" : "border-border bg-surface"
-                }`}
-              >
-                <span
-                  className={`grid size-10 shrink-0 place-items-center rounded-full text-lg ${
-                    ok ? "bg-accent/10" : "bg-surface-2 opacity-40 grayscale"
-                  }`}
-                  aria-hidden
-                >
-                  {meta?.emoji ?? "⭐"}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className={`text-sm font-medium ${ok ? "" : "text-muted"}`}>
-                    {a.name}
-                  </div>
-                  <div className="text-xs text-faint">{a.description}</div>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs">
-                  {ok ? (
-                    <span className="font-semibold text-accent">Débloqué ✓</span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 font-mono tabular-nums text-faint">
-                      <CoinIcon className="size-3.5" />+{a.coins}
-                    </span>
-                  )}
-                  <span className="font-mono tabular-nums text-faint">+{a.xp} XP</span>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        <AchievementsList unlockedKeys={achievementKeys} rates={rates} />
       </div>
     </section>
   );

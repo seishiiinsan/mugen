@@ -1093,6 +1093,33 @@ export async function getMyAchievementKeys(): Promise<string[]> {
   return ((data as { key: string }[] | null) ?? []).map((r) => r.key);
 }
 
+export interface AchievementRate {
+  unlocked: number;
+  total: number;
+  /** Share of players who unlocked it, 0–100 (rounded). */
+  pct: number;
+}
+
+/** Global unlock rate per achievement key, for the "% of players" badge. */
+export async function getAchievementRates(): Promise<Map<string, AchievementRate>> {
+  if (!isSupabaseConfigured()) return new Map();
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("achievement_rates");
+  const rows =
+    (data as { key: string; unlocked: number; total: number }[] | null) ?? [];
+  const map = new Map<string, AchievementRate>();
+  for (const r of rows) {
+    const unlocked = Number(r.unlocked);
+    const total = Number(r.total);
+    map.set(r.key, {
+      unlocked,
+      total,
+      pct: total > 0 ? Math.round((unlocked / total) * 100) : 0,
+    });
+  }
+  return map;
+}
+
 /** Whether today's daily bonus is still claimable (UTC day). */
 export async function canClaimDaily(): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;

@@ -5,7 +5,7 @@ import {
   fetchScorers,
   isSportsApiConfigured,
 } from "@/lib/sports";
-import { scoreFull } from "@/lib/domain/markets";
+import { scoreFull, scoreScorers } from "@/lib/domain/markets";
 import type { BoostType, ScorerPick } from "@/lib/domain/types";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
 import {
@@ -125,9 +125,13 @@ export async function settlePredictions(): Promise<SettleResult> {
         scorers: p.scorers ?? [],
         outcome,
       });
+      // Persist correct goalscorer count so scorer achievements stay DB-derivable.
+      const scorerHits = p.scorers?.length
+        ? scoreScorers(p.scorers, outcome).hits
+        : 0;
       await admin
         .from("predictions")
-        .update({ points, base_points: basePoints })
+        .update({ points, base_points: basePoints, scorer_hits: scorerHits })
         .eq("id", p.id);
       // Award coins for the points earned (idempotent by prediction id).
       await grantPredictionCoins(admin, p.user_id, p.id, points);

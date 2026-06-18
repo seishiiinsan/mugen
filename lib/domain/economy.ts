@@ -73,12 +73,42 @@ export interface AchievementStats {
   settled: number;
   /** Lifetime exact scores (base_points = 10). */
   exacts: number;
+  /** Lifetime correct goalscorer picks (sum of predictions.scorer_hits). */
+  scorerHits: number;
+  /** Accepted friendships. */
+  friends: number;
+  /** Owned cosmetics (frames/titles/colors — badges excluded). */
+  cosmetics: number;
+  /** Lifetime coins spent in the shop. */
+  coinsSpent: number;
 }
+
+/** Theme an achievement belongs to — drives the tabs on the achievements page. */
+export type AchievementCategory =
+  | "predictions"
+  | "scorers"
+  | "friends"
+  | "cosmetics"
+  | "economy";
+
+/** Ordered tab labels for the achievements page. */
+export const ACHIEVEMENT_CATEGORIES: {
+  key: AchievementCategory;
+  label: string;
+}[] = [
+  { key: "predictions", label: "Pronostics" },
+  { key: "scorers", label: "Buteurs" },
+  { key: "friends", label: "Amis" },
+  { key: "cosmetics", label: "Cosmétiques" },
+  { key: "economy", label: "Monnaie" },
+];
 
 export interface Achievement {
   key: string;
   name: string;
   description: string;
+  /** Theme bucket (tabs). */
+  category: AchievementCategory;
   /** Coins awarded on unlock. */
   coins: number;
   /** XP awarded on unlock. */
@@ -89,12 +119,14 @@ export interface Achievement {
   test: (s: AchievementStats) => boolean;
 }
 
-/** Auto-unlocked achievements, checked after each settle. */
+/** Auto-unlocked achievements, checked after each settle / backfill scan. */
 export const ACHIEVEMENTS: Achievement[] = [
+  // --- Pronostics -----------------------------------------------------------
   {
     key: "first_prediction",
     name: "Premier pronostic",
     description: "Soumettre et régler un premier pronostic.",
+    category: "predictions",
     coins: 20,
     xp: 50,
     badge: "badge_first_prediction",
@@ -104,6 +136,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     key: "played_10",
     name: "10 pronostics",
     description: "Régler dix pronostics.",
+    category: "predictions",
     coins: 50,
     xp: 100,
     badge: "badge_played_10",
@@ -113,6 +146,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     key: "first_exact",
     name: "Premier score exact",
     description: "Trouver un premier score exact.",
+    category: "predictions",
     coins: 50,
     xp: 150,
     badge: "badge_first_exact",
@@ -122,6 +156,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     key: "exact_10",
     name: "10 scores exacts",
     description: "Cumuler dix scores exacts.",
+    category: "predictions",
     coins: 150,
     xp: 400,
     badge: "badge_exact_10",
@@ -131,6 +166,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     key: "exact_25",
     name: "25 scores exacts",
     description: "Cumuler vingt-cinq scores exacts.",
+    category: "predictions",
     coins: 300,
     xp: 900,
     badge: "badge_exact_25",
@@ -140,6 +176,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     key: "played_50",
     name: "50 pronostics",
     description: "Régler cinquante pronostics.",
+    category: "predictions",
     coins: 100,
     xp: 300,
     badge: "badge_played_50",
@@ -149,9 +186,168 @@ export const ACHIEVEMENTS: Achievement[] = [
     key: "played_100",
     name: "100 pronostics",
     description: "Régler cent pronostics.",
+    category: "predictions",
     coins: 250,
     xp: 700,
     badge: "badge_played_100",
     test: (s) => s.settled >= 100,
+  },
+
+  // --- Buteurs --------------------------------------------------------------
+  {
+    key: "scorer_first",
+    name: "Premier bon buteur",
+    description: "Trouver un premier buteur.",
+    category: "scorers",
+    coins: 40,
+    xp: 120,
+    badge: "badge_scorer_first",
+    test: (s) => s.scorerHits >= 1,
+  },
+  {
+    key: "scorer_10",
+    name: "10 buteurs trouvés",
+    description: "Trouver dix buteurs au total.",
+    category: "scorers",
+    coins: 120,
+    xp: 350,
+    badge: "badge_scorer_10",
+    test: (s) => s.scorerHits >= 10,
+  },
+  {
+    key: "scorer_25",
+    name: "25 buteurs trouvés",
+    description: "Trouver vingt-cinq buteurs au total.",
+    category: "scorers",
+    coins: 250,
+    xp: 750,
+    badge: "badge_scorer_25",
+    test: (s) => s.scorerHits >= 25,
+  },
+  {
+    key: "scorer_50",
+    name: "50 buteurs trouvés",
+    description: "Trouver cinquante buteurs au total.",
+    category: "scorers",
+    coins: 500,
+    xp: 1500,
+    badge: "badge_scorer_50",
+    test: (s) => s.scorerHits >= 50,
+  },
+
+  // --- Amis -----------------------------------------------------------------
+  {
+    key: "friend_first",
+    name: "Premier ami",
+    description: "Ajouter un premier ami.",
+    category: "friends",
+    coins: 30,
+    xp: 80,
+    badge: "badge_friend_first",
+    test: (s) => s.friends >= 1,
+  },
+  {
+    key: "friends_5",
+    name: "5 amis",
+    description: "Compter cinq amis.",
+    category: "friends",
+    coins: 80,
+    xp: 200,
+    badge: "badge_friends_5",
+    test: (s) => s.friends >= 5,
+  },
+  {
+    key: "friends_10",
+    name: "10 amis",
+    description: "Compter dix amis.",
+    category: "friends",
+    coins: 150,
+    xp: 400,
+    badge: "badge_friends_10",
+    test: (s) => s.friends >= 10,
+  },
+  {
+    key: "friends_25",
+    name: "25 amis",
+    description: "Compter vingt-cinq amis.",
+    category: "friends",
+    coins: 350,
+    xp: 1000,
+    badge: "badge_friends_25",
+    test: (s) => s.friends >= 25,
+  },
+
+  // --- Cosmétiques ----------------------------------------------------------
+  {
+    key: "cosmetic_first",
+    name: "Premier cosmétique",
+    description: "Posséder un premier cosmétique.",
+    category: "cosmetics",
+    coins: 30,
+    xp: 80,
+    badge: "badge_cosmetic_first",
+    test: (s) => s.cosmetics >= 1,
+  },
+  {
+    key: "cosmetic_5",
+    name: "Collectionneur",
+    description: "Posséder cinq cosmétiques.",
+    category: "cosmetics",
+    coins: 120,
+    xp: 300,
+    badge: "badge_cosmetic_5",
+    test: (s) => s.cosmetics >= 5,
+  },
+  {
+    key: "cosmetic_15",
+    name: "Garde-robe garnie",
+    description: "Posséder quinze cosmétiques.",
+    category: "cosmetics",
+    coins: 300,
+    xp: 800,
+    badge: "badge_cosmetic_15",
+    test: (s) => s.cosmetics >= 15,
+  },
+
+  // --- Monnaie --------------------------------------------------------------
+  {
+    key: "spend_500",
+    name: "Premiers achats",
+    description: "Dépenser 500 pièces en cosmétiques.",
+    category: "economy",
+    coins: 50,
+    xp: 120,
+    badge: "badge_spend_500",
+    test: (s) => s.coinsSpent >= 500,
+  },
+  {
+    key: "spend_2000",
+    name: "Bon client",
+    description: "Dépenser 2 000 pièces en cosmétiques.",
+    category: "economy",
+    coins: 120,
+    xp: 350,
+    badge: "badge_spend_2000",
+    test: (s) => s.coinsSpent >= 2000,
+  },
+  {
+    key: "spend_5000",
+    name: "Grand dépensier",
+    description: "Dépenser 5 000 pièces en cosmétiques.",
+    category: "economy",
+    coins: 250,
+    xp: 750,
+    badge: "badge_spend_5000",
+    test: (s) => s.coinsSpent >= 5000,
+  },
+  {
+    key: "spend_10000",
+    name: "Magnat de la mode",
+    description: "Dépenser 10 000 pièces en cosmétiques.",
+    category: "economy",
+    coins: 500,
+    xp: 1500,
+    badge: "badge_spend_10000",
+    test: (s) => s.coinsSpent >= 10000,
   },
 ];

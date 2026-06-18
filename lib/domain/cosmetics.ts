@@ -61,6 +61,25 @@ export const BADGE_META: Record<string, { emoji: string; label: string }> = {
   badge_month_gold: { emoji: "🥇", label: "Champion du mois" },
   badge_month_silver: { emoji: "🥈", label: "Vice-champion" },
   badge_month_bronze: { emoji: "🥉", label: "Podium du mois" },
+  // Buteurs
+  badge_scorer_first: { emoji: "⚽", label: "Premier bon buteur" },
+  badge_scorer_10: { emoji: "🥅", label: "10 buteurs trouvés" },
+  badge_scorer_25: { emoji: "🎯", label: "25 buteurs trouvés" },
+  badge_scorer_50: { emoji: "👟", label: "50 buteurs trouvés" },
+  // Amis
+  badge_friend_first: { emoji: "🤝", label: "Premier ami" },
+  badge_friends_5: { emoji: "👥", label: "5 amis" },
+  badge_friends_10: { emoji: "🧑‍🤝‍🧑", label: "10 amis" },
+  badge_friends_25: { emoji: "🌐", label: "25 amis" },
+  // Cosmétiques
+  badge_cosmetic_first: { emoji: "🎨", label: "Premier cosmétique" },
+  badge_cosmetic_5: { emoji: "🧥", label: "Collectionneur" },
+  badge_cosmetic_15: { emoji: "👑", label: "Garde-robe garnie" },
+  // Monnaie
+  badge_spend_500: { emoji: "🪙", label: "Premiers achats" },
+  badge_spend_2000: { emoji: "💰", label: "Bon client" },
+  badge_spend_5000: { emoji: "💸", label: "Grand dépensier" },
+  badge_spend_10000: { emoji: "🤑", label: "Magnat de la mode" },
   // Spéciaux (octroyés auto ou par l'admin)
   badge_founder: { emoji: "🏛️", label: "Fondateur" },
   badge_beta: { emoji: "🧪", label: "Beta-testeur" },
