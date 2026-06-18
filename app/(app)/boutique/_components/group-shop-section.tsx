@@ -20,16 +20,11 @@ export function GroupShopSection({
   const items = catalogs[group?.id ?? ""] ?? [];
 
   return (
-    <section className="mt-8">
+    <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">
-            Cosmétiques de groupes
-          </h2>
-          <p className="text-sm text-muted">
-            Dépensés depuis la cagnotte — réservé au propriétaire.
-          </p>
-        </div>
+        <p className="text-sm text-muted">
+          Dépensés depuis la cagnotte — réservé au propriétaire.
+        </p>
         <div className="flex items-center gap-2">
           <select
             value={group?.id ?? ""}
@@ -65,7 +60,7 @@ export function GroupShopSection({
           ))}
         </div>
       )}
-    </section>
+    </div>
   );
 }
 
