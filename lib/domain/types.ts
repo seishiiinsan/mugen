@@ -144,6 +144,42 @@ export interface Group {
   createdAt: string;
 }
 
+/** Group cosmetic families (priced in the group pot, owner-managed). */
+export type GroupCosmeticKind = "group_bg" | "group_icon" | "group_title";
+
+/** A group the caller owns, with its current pot balance (shop selector). */
+export interface OwnedGroupPot {
+  id: string;
+  name: string;
+  potBalance: number;
+}
+
+/** A group's pot for the viewer (member-gated). */
+export interface GroupPot {
+  balance: number;
+  myContribution: number;
+}
+
+/** A group-shop catalog entry with the group's ownership flag. */
+export interface GroupShopItem {
+  key: string;
+  kind: GroupCosmeticKind;
+  name: string;
+  description: string | null;
+  price: number;
+  owned: boolean;
+}
+
+/** A group cosmetic owned by a group, with its equipped state (owner view). */
+export interface GroupOwnedItem {
+  key: string;
+  kind: GroupCosmeticKind;
+  name: string;
+  description: string | null;
+  price: number;
+  equipped: boolean;
+}
+
 /** A row in the admin "Joueurs" list. */
 export interface AdminPlayer {
   id: string;

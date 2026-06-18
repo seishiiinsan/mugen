@@ -24,6 +24,10 @@ import type {
   FriendRequest,
   FriendSummary,
   Group,
+  GroupOwnedItem,
+  GroupPot,
+  GroupShopItem,
+  OwnedGroupPot,
   AdminPlayer,
   AdminPlayerDetail,
   LeaderboardEntry,
@@ -677,6 +681,101 @@ export async function getGroupLeaderboard(
     exactScores: Number(r.exact_scores),
     avatarUrl: r.avatar_url ?? undefined,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// CAGNOTTES & COSMÉTIQUES DE GROUPE
+// ---------------------------------------------------------------------------
+
+/** Groups the caller owns, with their pot balance (shop section selector). */
+export async function getOwnedGroupsWithPot(): Promise<OwnedGroupPot[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_owned_groups_pots");
+  if (error) {
+    console.error("[getOwnedGroupsWithPot]", error);
+    return [];
+  }
+  return (
+    (data as { id: string; name: string; pot_balance: number }[] | null) ?? []
+  ).map((r) => ({ id: r.id, name: r.name, potBalance: Number(r.pot_balance) }));
+}
+
+/** A group's pot balance and the caller's own contribution (member-gated). */
+export async function getGroupPot(groupId: string): Promise<GroupPot | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("group_pot", { p_group: groupId });
+  const row = (
+    data as { pot_balance: number; my_contribution: number }[] | null
+  )?.[0];
+  if (error || !row) {
+    if (error) console.error("[getGroupPot]", error);
+    return null;
+  }
+  return {
+    balance: Number(row.pot_balance),
+    myContribution: Number(row.my_contribution),
+  };
+}
+
+interface GroupShopRow {
+  key: string;
+  kind: GroupShopItem["kind"];
+  name: string;
+  description: string | null;
+  price: number;
+  sort: number;
+}
+
+/** Active group-cosmetic catalog with the group's ownership flag. */
+export async function getGroupShopItems(
+  groupId: string,
+): Promise<GroupShopItem[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("group_shop_catalog", {
+    p_group: groupId,
+  });
+  if (error) {
+    console.error("[getGroupShopItems]", error);
+    return [];
+  }
+  return ((data as (GroupShopRow & { owned: boolean })[] | null) ?? []).map(
+    (r) => ({
+      key: r.key,
+      kind: r.kind,
+      name: r.name,
+      description: r.description,
+      price: Number(r.price),
+      owned: Boolean(r.owned),
+    }),
+  );
+}
+
+/** Cosmetics a group owns, with equipped flags (owner-gated). */
+export async function getGroupOwnedItems(
+  groupId: string,
+): Promise<GroupOwnedItem[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("group_owned_items", {
+    p_group: groupId,
+  });
+  if (error) {
+    console.error("[getGroupOwnedItems]", error);
+    return [];
+  }
+  return ((data as (GroupShopRow & { equipped: boolean })[] | null) ?? []).map(
+    (r) => ({
+      key: r.key,
+      kind: r.kind,
+      name: r.name,
+      description: r.description,
+      price: Number(r.price),
+      equipped: Boolean(r.equipped),
+    }),
+  );
 }
 
 // ---------------------------------------------------------------------------

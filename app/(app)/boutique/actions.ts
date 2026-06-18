@@ -58,6 +58,27 @@ export async function giftItem(
   return { ok: true, message: "Cadeau offert ! 🎁" };
 }
 
+/** Spend a group's pot on a group cosmetic (owner only). */
+export async function purchaseGroupItem(
+  groupId: string,
+  key: string,
+): Promise<ActionResult> {
+  if (!isSupabaseConfigured()) return { ok: false, message: "Indisponible." };
+  if (!groupId || !key) return { ok: false, message: "Article inconnu." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("group_purchase_item", {
+    p_group: groupId,
+    p_key: key,
+  });
+  const row = (data as { ok: boolean; error: string | null }[] | null)?.[0];
+  if (error || !row?.ok) {
+    return { ok: false, message: row?.error ?? "Achat impossible." };
+  }
+  refresh();
+  return { ok: true, message: "Cosmétique de groupe acheté 🎉" };
+}
+
 export async function equipItem(
   slot: string,
   key: string | null,
