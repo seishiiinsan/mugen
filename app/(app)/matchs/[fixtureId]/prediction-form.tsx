@@ -20,6 +20,20 @@ export interface ScorerOption {
   isHome: boolean;
 }
 
+/** Normalize a lineup role to one of G/D/M/F (forwards are the fallback). */
+function positionKey(position: string): "F" | "M" | "D" | "G" {
+  const c = (position || "").trim().toUpperCase().charAt(0);
+  return c === "G" || c === "D" || c === "M" ? c : "F";
+}
+
+/** Scorer groups, ordered the way the picker presents them: attack → keeper. */
+const SCORER_GROUPS: { key: "F" | "M" | "D" | "G"; label: string }[] = [
+  { key: "F", label: "Attaquants" },
+  { key: "M", label: "Milieux" },
+  { key: "D", label: "Défenseurs" },
+  { key: "G", label: "Gardien" },
+];
+
 export function PredictionForm({
   fixtureId,
   homeName,
@@ -60,8 +74,15 @@ export function PredictionForm({
   const [away, setAway] = useState(start.away);
 
   const [boost, setBoost] = useState<BoostType | null>(initialBoost);
+  // Bumped each time a boost is switched on, to replay the celebratory pop.
+  const [boostAnim, setBoostAnim] = useState(0);
   const [home2, setHome2] = useState(initialSecondary?.home ?? 0);
   const [away2, setAway2] = useState(initialSecondary?.away ?? 0);
+
+  function selectBoost(t: BoostType) {
+    setBoost((prev) => (prev === t ? null : t));
+    if (boost !== t) setBoostAnim((n) => n + 1);
+  }
 
   const [scorers, setScorers] = useState<ScorerPick[]>(initialScorers);
 
@@ -114,7 +135,7 @@ export function PredictionForm({
         />
       </div>
 
-      {/* Boost selector — one of each type per month */}
+      {/* Boost selector — one of each type per month, gamified */}
       <div className="mt-5 border-t border-border pt-4">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-xs font-medium uppercase tracking-wide text-faint">
@@ -131,21 +152,48 @@ export function PredictionForm({
                 key={t}
                 type="button"
                 disabled={!available}
-                onClick={() => setBoost(active ? null : t)}
+                onClick={() => selectBoost(t)}
                 title={available ? BOOSTS[t].rule : "Déjà utilisé ce mois"}
-                className={`rounded-lg border px-2 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                className={`press relative flex flex-col items-center gap-1 overflow-hidden rounded-xl border px-2 py-3 text-center transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
                   active
-                    ? "border-accent bg-accent/10 text-accent"
-                    : "border-border text-muted hover:border-border-strong"
+                    ? "border-accent bg-gradient-to-b from-accent/15 to-accent/[0.04] text-accent shadow-sm ring-1 ring-accent/30"
+                    : "border-border text-muted hover:border-border-strong hover:bg-surface-2"
                 }`}
               >
-                {BOOSTS[t].name}
+                <span
+                  key={active ? `on-${boostAnim}` : "off"}
+                  aria-hidden
+                  className={`text-2xl leading-none ${active ? "boost-bounce" : ""}`}
+                >
+                  {BOOSTS[t].emoji}
+                </span>
+                <span className="text-xs font-semibold leading-tight">
+                  {BOOSTS[t].name}
+                </span>
+                {active && (
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-accent/80">
+                    Activé
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
         {boost && (
-          <p className="mt-2 text-xs text-muted">{BOOSTS[boost].rule}</p>
+          <div
+            key={`rule-${boostAnim}`}
+            className="boost-pop mt-2 flex items-start gap-2 rounded-lg border border-accent/20 bg-accent/[0.06] px-3 py-2 text-xs text-muted"
+          >
+            <span aria-hidden className="shrink-0 text-base leading-none">
+              {BOOSTS[boost].emoji}
+            </span>
+            <span>
+              <span className="font-semibold text-accent">
+                {BOOSTS[boost].tagline}
+              </span>{" "}
+              {BOOSTS[boost].rule}
+            </span>
+          </div>
         )}
       </div>
 
@@ -269,33 +317,47 @@ function ScorerColumn({
   return (
     <div>
       <p className="mb-1.5 truncate text-xs font-medium text-muted">{team}</p>
-      <div className="flex flex-wrap gap-1.5">
-        {options.length === 0 && (
-          <span className="text-xs text-faint">—</span>
-        )}
-        {options.map((opt) => {
-          const active = selected.some((s) => s.id === opt.id);
-          return (
-            <button
-              key={opt.id}
-              type="button"
-              disabled={!active && atMax}
-              onClick={() => onToggle(opt)}
-              title={`${opt.name} · +${scorerHitPoints(opt.position)} si buteur`}
-              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                active
-                  ? "border-accent bg-accent/10 font-medium text-accent"
-                  : "border-border text-muted hover:border-border-strong"
-              }`}
-            >
-              {opt.name}
-              <span className="text-[10px] text-faint">
-                +{scorerHitPoints(opt.position)}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {options.length === 0 ? (
+        <span className="text-xs text-faint">—</span>
+      ) : (
+        <div className="space-y-2.5">
+          {SCORER_GROUPS.map(({ key, label }) => {
+            const group = options.filter((o) => positionKey(o.position) === key);
+            if (group.length === 0) return null;
+            return (
+              <div key={key}>
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-faint">
+                  {label}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {group.map((opt) => {
+                    const active = selected.some((s) => s.id === opt.id);
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        disabled={!active && atMax}
+                        onClick={() => onToggle(opt)}
+                        title={`${opt.name} · +${scorerHitPoints(opt.position)} si buteur`}
+                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                          active
+                            ? "border-accent bg-accent/10 font-medium text-accent"
+                            : "border-border text-muted hover:border-border-strong"
+                        }`}
+                      >
+                        {opt.name}
+                        <span className="text-[10px] text-faint">
+                          +{scorerHitPoints(opt.position)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

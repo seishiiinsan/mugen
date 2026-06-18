@@ -96,3 +96,41 @@ body {
     transform: translateX(-50%);
   }
 }
+
+/* Boost activation — a celebratory pop + the emoji giving a little jump.
+   Gated behind no-preference so reduced-motion stays still. */
+@media (prefers-reduced-motion: no-preference) {
+  .boost-pop {
+    animation: boost-pop 0.32s ease-out;
+  }
+  .boost-bounce {
+    animation: boost-bounce 0.45s ease-out;
+  }
+}
+
+@keyframes boost-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes boost-bounce {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  35% {
+    transform: translateY(-5px) scale(1.25) rotate(-8deg);
+  }
+  70% {
+    transform: translateY(0) scale(1.1) rotate(4deg);
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+}
