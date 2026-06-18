@@ -12,9 +12,72 @@ import {
   COINS_PER_POINT,
   monthlyRewardBadge,
   monthlyRewardCoins,
+  type AchievementStats,
 } from "@/lib/domain/economy";
 
 type Admin = SupabaseClient;
+
+/**
+ * Compute a user's lifetime achievement stats from the DB (service-role).
+ * Single source of truth tested by every achievement, so a re-scan after
+ * adding a new achievement awards it retroactively to whoever already met it.
+ */
+export async function computeAchievementStats(
+  admin: Admin,
+  userId: string,
+): Promise<AchievementStats> {
+  const [
+    { count: settled },
+    { count: exacts },
+    { data: hitRows },
+    { count: friends },
+    { count: cosmetics },
+    { data: spendRows },
+  ] = await Promise.all([
+    admin
+      .from("predictions")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .not("points", "is", null),
+    admin
+      .from("predictions")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("base_points", 10),
+    admin.from("predictions").select("scorer_hits").eq("user_id", userId),
+    admin
+      .from("friendships")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "accepted")
+      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`),
+    admin
+      .from("user_items")
+      .select("item_key, shop_items!inner(kind)", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .in("shop_items.kind", ["frame", "title", "color"]),
+    admin
+      .from("coin_ledger")
+      .select("amount")
+      .eq("user_id", userId)
+      .eq("reason", "purchase"),
+  ]);
+
+  const scorerHits = ((hitRows as { scorer_hits: number | null }[] | null) ?? [])
+    .reduce((sum, r) => sum + (r.scorer_hits ?? 0), 0);
+  const coinsSpent = ((spendRows as { amount: number }[] | null) ?? []).reduce(
+    (sum, r) => sum + Math.max(0, -r.amount),
+    0,
+  );
+
+  return {
+    settled: settled ?? 0,
+    exacts: exacts ?? 0,
+    scorerHits,
+    friends: friends ?? 0,
+    cosmetics: cosmetics ?? 0,
+    coinsSpent,
+  };
+}
 
 /** Credit coins for a settled prediction (idempotent by prediction id). */
 export async function grantPredictionCoins(
@@ -32,30 +95,26 @@ export async function grantPredictionCoins(
   });
 }
 
-/** Unlock any newly-earned achievements for a user (coins + badge). */
+/**
+ * Unlock any newly-earned achievements for a user (badge + coins + XP).
+ *
+ * `awardCoins` defaults to true (live settle path). The retroactive backfill
+ * passes `false` so re-scanning old players grants the achievement + badge
+ * without inflating coin balances for milestones crossed long ago.
+ */
 export async function grantAchievements(
   admin: Admin,
   userId: string,
+  opts: { awardCoins?: boolean } = {},
 ): Promise<void> {
+  const awardCoins = opts.awardCoins ?? true;
   const { data: unlocked } = await admin
     .from("user_achievements")
     .select("key")
     .eq("user_id", userId);
   const have = new Set(((unlocked as { key: string }[] | null) ?? []).map((r) => r.key));
 
-  const [{ count: settled }, { count: exacts }] = await Promise.all([
-    admin
-      .from("predictions")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .not("points", "is", null),
-    admin
-      .from("predictions")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("base_points", 10),
-  ]);
-  const stats = { settled: settled ?? 0, exacts: exacts ?? 0 };
+  const stats = await computeAchievementStats(admin, userId);
 
   for (const a of ACHIEVEMENTS) {
     if (have.has(a.key) || !a.test(stats)) continue;
@@ -63,7 +122,7 @@ export async function grantAchievements(
       .from("user_achievements")
       .insert({ user_id: userId, key: a.key });
     if (error) continue; // already unlocked (race) — skip rewards
-    if (a.coins > 0) {
+    if (awardCoins && a.coins > 0) {
       await admin.rpc("grant_coins", {
         p_user: userId,
         p_amount: a.coins,

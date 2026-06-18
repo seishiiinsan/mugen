@@ -249,7 +249,8 @@ function ResultCard({
         </span>
         <span className="flex items-center gap-2">
           {boost && (
-            <span className="rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+            <span className="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+              <span aria-hidden>{BOOSTS[boost].emoji}</span>
               {BOOSTS[boost].name}
             </span>
           )}
@@ -306,7 +307,7 @@ function ResultCard({
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted">
               {label}
-              {boost ? ` · ${BOOSTS[boost].name}` : ""}
+              {boost ? ` · ${BOOSTS[boost].emoji} ${BOOSTS[boost].name}` : ""}
               {result && result.marketPoints !== 0
                 ? ` · marchés ${result.marketPoints > 0 ? "+" : ""}${result.marketPoints}`
                 : ""}

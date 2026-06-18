@@ -1,6 +1,10 @@
 import Link from "next/link";
 import type { Fixture, Prediction } from "@/lib/domain/types";
-import { getFixturesByIds, getMyPredictions } from "@/lib/data";
+import {
+  getActualScorers,
+  getFixturesByIds,
+  getMyPredictions,
+} from "@/lib/data";
 import { scoreBoosted } from "@/lib/domain/boosts";
 import { FixtureCard } from "../_components/fixture-card";
 import { PredictionsIcon } from "../_components/icons";
@@ -50,6 +54,14 @@ export default async function MesPronosticsPage(
       return { prediction: p, fixture, earned, exact };
     })
     .filter((r): r is Row => r !== null);
+
+  // Real scorers for finished matches the user picked goalscorers on — drives
+  // the goalscorer points breakdown on each card.
+  const scorers = await getActualScorers(
+    rows
+      .filter((r) => r.earned != null && r.prediction.scorers.length > 0)
+      .map((r) => r.fixture.id),
+  );
 
   // Overall stats are always computed on every prediction (independent of the
   // active filters), so the cards reflect the player's true totals.
@@ -151,10 +163,10 @@ export default async function MesPronosticsPage(
           ) : (
             <>
               {pending.length > 0 && (
-                <Group title="À suivre" rows={pending} />
+                <Group title="À suivre" rows={pending} scorers={scorers} />
               )}
               {finished.length > 0 && (
-                <Group title="Terminés" rows={finished} />
+                <Group title="Terminés" rows={finished} scorers={scorers} />
               )}
             </>
           )}
@@ -164,7 +176,15 @@ export default async function MesPronosticsPage(
   );
 }
 
-function Group({ title, rows }: { title: string; rows: Row[] }) {
+function Group({
+  title,
+  rows,
+  scorers,
+}: {
+  title: string;
+  rows: Row[];
+  scorers: Map<number, { ids: number[]; names: string[] }>;
+}) {
   return (
     <div className="mb-6">
       <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-faint">
@@ -173,7 +193,11 @@ function Group({ title, rows }: { title: string; rows: Row[] }) {
       <ul className="space-y-2.5">
         {rows.map(({ prediction, fixture }) => (
           <li key={prediction.fixtureId}>
-            <FixtureCard fixture={fixture} prediction={prediction} />
+            <FixtureCard
+              fixture={fixture}
+              prediction={prediction}
+              actualScorers={scorers.get(fixture.id) ?? null}
+            />
           </li>
         ))}
       </ul>

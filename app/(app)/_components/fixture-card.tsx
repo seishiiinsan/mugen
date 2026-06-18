@@ -1,6 +1,14 @@
 import Link from "next/link";
 import type { Fixture, Prediction } from "@/lib/domain/types";
 import { BOOSTS, scoreBoosted } from "@/lib/domain/boosts";
+import { SCORING_RULES, scorePrediction } from "@/lib/domain/scoring";
+import {
+  isScorerHit,
+  scoreFull,
+  scoreScorers,
+  scorerHitPoints,
+  type MarketOutcome,
+} from "@/lib/domain/markets";
 import { formatMatchDay, formatTime } from "@/lib/ui/format";
 import { PredictionsIcon } from "./icons";
 import { StatusBadge } from "./status-badge";
@@ -9,27 +17,55 @@ import { TeamCrest } from "./team-crest";
 export function FixtureCard({
   fixture,
   prediction,
+  actualScorers,
 }: {
   fixture: Fixture;
   prediction?: Prediction | null;
+  /** Real scorers of the match (ids + names) — drives the settled breakdown. */
+  actualScorers?: { ids: number[]; names: string[] } | null;
 }) {
   const showScore = fixture.score !== null;
   const winner = resolveWinner(fixture);
   const isLive = fixture.status === "live";
 
-  // Points: computed live from the final score for settled matches (so they
-  // show before the settling job persists them), else the stored value.
+  const settled =
+    prediction != null && fixture.status === "finished" && fixture.score != null;
+
+  // Only grade goalscorers when we can trust the feed: it returned scorers, or
+  // the match genuinely ended 0-0 (so an empty list is correct, not a failure).
+  const totalGoals = settled ? fixture.score!.home + fixture.score!.away : 0;
+  const canGrade =
+    settled &&
+    actualScorers != null &&
+    (totalGoals === 0 ||
+      actualScorers.ids.length > 0 ||
+      actualScorers.names.length > 0);
+
+  // The actual goalscorers, when trustworthy, let us grade each pick + market.
+  const outcome: MarketOutcome | null = canGrade
+    ? {
+        score: fixture.score!,
+        scorerIds: actualScorers!.ids,
+        scorerNames: actualScorers!.names,
+      }
+    : null;
+
+  const full =
+    settled && prediction
+      ? scoreFull({
+          primary: { home: prediction.home, away: prediction.away },
+          secondary: prediction.secondary,
+          actual: fixture.score!,
+          boost: prediction.boost,
+          scorers: prediction.scorers,
+          outcome,
+        })
+      : null;
+
+  // Points: prefer the persisted total (includes scorers + floor); fall back to
+  // the live computation so they show before the settling job runs.
   const earnedPoints =
-    prediction == null
-      ? null
-      : fixture.status === "finished" && fixture.score
-        ? scoreBoosted({
-            primary: { home: prediction.home, away: prediction.away },
-            secondary: prediction.secondary,
-            actual: fixture.score,
-            boost: prediction.boost,
-          }).points
-        : prediction.points;
+    prediction == null ? null : (prediction.points ?? full?.points ?? null);
 
   return (
     <Link
@@ -105,23 +141,147 @@ export function FixtureCard({
             )}
           </div>
 
-          {/* Chosen goalscorers */}
+          {/* Chosen goalscorers — graded once the real scorers are known */}
           {prediction.scorers.length > 0 && (
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-faint">Buteurs</span>
-              {prediction.scorers.map((s) => (
-                <span
-                  key={s.id}
-                  className="rounded-md border border-border bg-surface px-1.5 py-0.5 text-xs text-muted"
-                >
-                  {s.name}
-                </span>
-              ))}
+              {prediction.scorers.map((s) => {
+                const hit = outcome ? isScorerHit(s, outcome) : null;
+                return (
+                  <span
+                    key={s.id}
+                    className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs ${
+                      hit === true
+                        ? "border-success/40 bg-success/10 text-success"
+                        : hit === false
+                          ? "border-danger/30 bg-danger/10 text-danger line-through"
+                          : "border-border bg-surface text-muted"
+                    }`}
+                  >
+                    {s.name}
+                    {hit === true && (
+                      <span className="font-mono">+{scorerHitPoints(s.position)}</span>
+                    )}
+                    {hit === false && <span className="font-mono">−2</span>}
+                  </span>
+                );
+              })}
             </div>
+          )}
+
+          {/* Points breakdown — base score + boost + goalscorers */}
+          {settled && prediction && full && (
+            <PointsBreakdown
+              prediction={prediction}
+              actual={fixture.score!}
+              outcome={outcome}
+              full={full}
+            />
           )}
         </div>
       )}
     </Link>
+  );
+}
+
+function PointsBreakdown({
+  prediction,
+  actual,
+  outcome,
+  full,
+}: {
+  prediction: Prediction;
+  actual: { home: number; away: number };
+  outcome: MarketOutcome | null;
+  full: ReturnType<typeof scoreFull>;
+}) {
+  const primary = { home: prediction.home, away: prediction.away };
+  // Plain (un-boosted) score of the main prediction — the breakdown's baseline.
+  const base = scorePrediction(primary, actual);
+  const baseLabel =
+    SCORING_RULES.find((r) => r.points === base)?.label ?? "Mauvais résultat";
+
+  // Boost contribution = boosted score minus the plain base. For double_chance
+  // this surfaces the upgrade from keeping the better of the two predictions.
+  const boostedBase = prediction.boost
+    ? scoreBoosted({
+        primary,
+        secondary: prediction.secondary,
+        actual,
+        boost: prediction.boost,
+      }).points
+    : base;
+  const boostDelta = boostedBase - base;
+
+  const hasScorers = prediction.scorers.length > 0 && outcome != null;
+  const market = hasScorers
+    ? scoreScorers(prediction.scorers, outcome!)
+    : null;
+
+  const total = prediction.points ?? full.points;
+  // The sum can dip below zero (e.g. several missed scorers); the engine
+  // floors the credited total at 0.
+  const floored = boostedBase + (market?.points ?? 0) < 0;
+
+  return (
+    <div className="mt-2.5 space-y-1 border-t border-border/70 pt-2 text-xs">
+      <BreakdownRow label={baseLabel} value={base} />
+      {prediction.boost && (
+        <BreakdownRow
+          label={`${BOOSTS[prediction.boost].emoji} ${BOOSTS[prediction.boost].name}`}
+          value={boostDelta}
+          signed
+        />
+      )}
+      {market && (
+        <BreakdownRow
+          label={`Buteurs · ${market.hits} ✓ / ${market.misses} ✗`}
+          value={market.points}
+          signed
+        />
+      )}
+      {floored && (
+        <p className="text-[10px] text-faint">Total plancher à 0 point.</p>
+      )}
+      <div className="flex items-center justify-between border-t border-border/70 pt-1.5">
+        <span className="font-medium text-foreground">Total</span>
+        <span
+          className={`font-mono font-bold tabular-nums ${
+            total > 0 ? "text-success" : "text-muted"
+          }`}
+        >
+          +{total} pts
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function BreakdownRow({
+  label,
+  value,
+  signed = false,
+}: {
+  label: string;
+  value: number;
+  signed?: boolean;
+}) {
+  const display = signed && value >= 0 ? `+${value}` : `${value}`;
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="min-w-0 truncate text-muted">{label}</span>
+      <span
+        className={`shrink-0 font-mono tabular-nums ${
+          value > 0
+            ? "text-foreground"
+            : value < 0
+              ? "text-danger"
+              : "text-faint"
+        }`}
+      >
+        {display}
+      </span>
+    </div>
   );
 }
 

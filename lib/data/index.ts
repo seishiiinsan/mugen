@@ -63,8 +63,10 @@ import { ensureProfile } from "@/lib/supabase/ensure-profile";
 import {
   fetchFixtureById,
   fetchFixturesByRange,
+  fetchScorers,
   isSportsApiConfigured,
 } from "@/lib/sports";
+import type { MatchScorers } from "@/lib/bzzoiro/match-extras";
 
 /** A row from the `predictions` table. */
 interface PredictionRow {
@@ -302,6 +304,23 @@ export async function getFixturesByIds(ids: number[]): Promise<Fixture[]> {
 
   const cached = ((data as FixtureRow[] | null) ?? []).map(mapFixtureRow);
   return refreshStaleFixtures(cached);
+}
+
+/**
+ * Real goalscorers (ids + names, own goals excluded) for several fixtures,
+ * fetched in parallel. Lets settled match cards show the goalscorer-market
+ * breakdown (who scored, what each pick earned) without re-deriving it server
+ * side. Each fixture degrades to empty on error; underlying calls are cached.
+ */
+export async function getActualScorers(
+  fixtureIds: number[],
+): Promise<Map<number, MatchScorers>> {
+  const ids = [...new Set(fixtureIds)];
+  if (ids.length === 0) return new Map();
+  const entries = await Promise.all(
+    ids.map(async (id) => [id, await fetchScorers(id)] as const),
+  );
+  return new Map(entries);
 }
 
 export async function getMyPredictions(): Promise<Prediction[]> {
@@ -1072,6 +1091,33 @@ export async function getMyAchievementKeys(): Promise<string[]> {
     .select("key")
     .eq("user_id", user.id);
   return ((data as { key: string }[] | null) ?? []).map((r) => r.key);
+}
+
+export interface AchievementRate {
+  unlocked: number;
+  total: number;
+  /** Share of players who unlocked it, 0–100 (rounded). */
+  pct: number;
+}
+
+/** Global unlock rate per achievement key, for the "% of players" badge. */
+export async function getAchievementRates(): Promise<Map<string, AchievementRate>> {
+  if (!isSupabaseConfigured()) return new Map();
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("achievement_rates");
+  const rows =
+    (data as { key: string; unlocked: number; total: number }[] | null) ?? [];
+  const map = new Map<string, AchievementRate>();
+  for (const r of rows) {
+    const unlocked = Number(r.unlocked);
+    const total = Number(r.total);
+    map.set(r.key, {
+      unlocked,
+      total,
+      pct: total > 0 ? Math.round((unlocked / total) * 100) : 0,
+    });
+  }
+  return map;
 }
 
 /** Whether today's daily bonus is still claimable (UTC day). */
