@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser, getMyGroups } from "@/lib/data";
+import { getCurrentUser, getMyGroups, getPublicGroups } from "@/lib/data";
 import { ChevronLeftIcon, GroupsIcon } from "../_components/icons";
 import { GroupForms } from "./_components/group-forms";
 
 export default async function GroupesPage() {
-  const [me, groups] = await Promise.all([getCurrentUser(), getMyGroups()]);
+  const [me, groups, publicGroups] = await Promise.all([
+    getCurrentUser(),
+    getMyGroups(),
+    getPublicGroups(),
+  ]);
   if (!me) redirect("/login");
 
   return (
@@ -24,7 +28,7 @@ export default async function GroupesPage() {
         </div>
       </header>
 
-      <GroupForms />
+      <GroupForms publicGroups={publicGroups} />
 
       <h2 className="mb-2 mt-7 text-xs font-medium uppercase tracking-wide text-faint">
         Mes groupes

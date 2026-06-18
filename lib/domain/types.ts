@@ -144,6 +144,15 @@ export interface Group {
   createdAt: string;
 }
 
+/** A public group surfaced in the discovery modal. */
+export interface PublicGroup {
+  id: string;
+  name: string;
+  memberCount: number;
+  ownerId: string;
+  isMember: boolean;
+}
+
 /** Group cosmetic families (priced in the group pot, owner-managed). */
 export type GroupCosmeticKind = "group_bg" | "group_icon" | "group_title";
 

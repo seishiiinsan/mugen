@@ -28,6 +28,7 @@ import type {
   GroupPot,
   GroupShopItem,
   OwnedGroupPot,
+  PublicGroup,
   AdminPlayer,
   AdminPlayerDetail,
   LeaderboardEntry,
@@ -649,6 +650,36 @@ export async function getMyGroups(): Promise<Group[]> {
 export async function getGroup(groupId: string): Promise<Group | null> {
   const groups = await getMyGroups();
   return groups.find((g) => g.id === groupId) ?? null;
+}
+
+/** Public groups for the discovery modal (optional name filter). */
+export async function getPublicGroups(query?: string): Promise<PublicGroup[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("public_groups", {
+    p_query: query ?? null,
+  });
+  if (error) {
+    console.error("[getPublicGroups]", error);
+    return [];
+  }
+  return (
+    (data as
+      | {
+          id: string;
+          name: string;
+          member_count: number;
+          owner_id: string;
+          is_member: boolean;
+        }[]
+      | null) ?? []
+  ).map((r) => ({
+    id: r.id,
+    name: r.name,
+    memberCount: Number(r.member_count),
+    ownerId: r.owner_id,
+    isMember: Boolean(r.is_member),
+  }));
 }
 
 interface GroupLeaderboardRow {

@@ -21,13 +21,37 @@ export async function createGroup(
     return { error: "Le nom doit faire entre 2 et 40 caractères." };
   }
 
+  const isPublic = formData.get("public") === "on";
+
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_group", { p_name: name });
+  // Only send p_public when needed so private creation still matches the legacy
+  // create_group(text) signature until migration 0028 is applied.
+  const { data, error } = await supabase.rpc(
+    "create_group",
+    isPublic ? { p_name: name, p_public: true } : { p_name: name },
+  );
   if (error || !data?.[0]?.id) {
     return { error: "Impossible de créer le groupe." };
   }
 
   redirect(`/groupes/${data[0].id}?t=${encodeURIComponent("Groupe créé.")}`);
+}
+
+/** Join a public group by id (no invite code needed). */
+export async function joinPublicGroup(groupId: string): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  if (!groupId) return;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("join_public_group", {
+    p_group: groupId,
+  });
+  if (error || !data) {
+    redirect(
+      `/groupes?t=${encodeURIComponent("Impossible de rejoindre ce groupe.")}&tt=error`,
+    );
+  }
+  redirect(`/groupes/${data}?t=${encodeURIComponent("Groupe rejoint.")}`);
 }
 
 export async function joinGroup(
