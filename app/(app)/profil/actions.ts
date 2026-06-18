@@ -91,6 +91,7 @@ export async function updateProfile(
       .from("avatars")
       .upload(path, file, { upsert: true, contentType: file.type || undefined });
     if (uploadError) {
+      console.error("[updateProfile] avatar upload", uploadError);
       return { error: "Échec de l'envoi de l'image." };
     }
     updates.avatar_url = supabase.storage.from("avatars").getPublicUrl(path)
