@@ -2,14 +2,23 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "./env";
 
-/** App sections that require an authenticated user. */
+/**
+ * App sections that require an authenticated user. Keep this in sync with the
+ * `app/(app)` route group: every page there assumes a logged-in user, so a
+ * missing prefix lets anonymous visitors reach confusing empty states (e.g.
+ * `/joueur/[username]`, which doesn't redirect on its own).
+ */
 const PROTECTED_PREFIXES = [
-  "/matchs",
-  "/mes-pronostics",
+  "/amis",
+  "/boutique",
   "/classement",
   "/groupes",
-  "/boutique",
+  "/joueur",
+  "/matchs",
+  "/mes-pronostics",
   "/profil",
+  "/signaler",
+  "/succes",
 ];
 
 /**
