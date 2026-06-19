@@ -9,9 +9,6 @@ import { ensureProfile } from "@/lib/supabase/ensure-profile";
 export interface AuthState {
   error?: string;
   message?: string;
-  /** Set after a sign-up that still needs e-mail confirmation, so the UI can
-   *  offer to resend the confirmation link to this address. */
-  pendingEmail?: string;
 }
 
 function safeRedirectPath(value: FormDataEntryValue | null): string {
@@ -79,44 +76,16 @@ export async function signUpWithPassword(
   });
   if (error) return { error: error.message };
 
-  // If email confirmation is enabled, there's no active session yet. Surface
-  // the address so the form can offer a resend if the mail never arrives.
+  // With e-mail confirmation disabled, signUp returns a session and we redirect
+  // straight away. This branch is a defensive fallback if confirmation is ever
+  // re-enabled in the Supabase dashboard.
   if (!data.session) {
     return {
-      message:
-        "Compte créé. Cliquez sur le lien envoyé par e-mail pour confirmer votre inscription — pensez à vérifier vos courriers indésirables.",
-      pendingEmail: email,
+      message: "Compte créé. Vérifiez votre e-mail pour confirmer l'inscription.",
     };
   }
 
   redirect("/matchs");
-}
-
-/** Re-send the sign-up confirmation e-mail (when the first one never arrived).
- *  Note: actual delivery depends on the Supabase project's SMTP config — the
- *  built-in sender is heavily rate-limited and often lands in spam. */
-export async function resendConfirmation(
-  _prev: AuthState,
-  formData: FormData,
-): Promise<AuthState> {
-  if (!isSupabaseConfigured()) return { error: "Authentification non configurée." };
-
-  const email = String(formData.get("email") ?? "");
-  if (!email) return { error: "Adresse e-mail manquante." };
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.resend({
-    type: "signup",
-    email,
-    options: { emailRedirectTo: `${await originUrl()}/auth/callback` },
-  });
-  // Keep the address either way so the button stays available for another try.
-  if (error) return { error: error.message, pendingEmail: email };
-
-  return {
-    message: "E-mail de confirmation renvoyé. Vérifiez votre boîte (et vos spams).",
-    pendingEmail: email,
-  };
 }
 
 export async function signInWithGoogle(formData: FormData): Promise<void> {

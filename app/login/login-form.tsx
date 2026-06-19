@@ -2,7 +2,6 @@
 
 import { useActionState, useState } from "react";
 import {
-  resendConfirmation,
   signInWithGoogle,
   signInWithPassword,
   signUpWithPassword,
@@ -26,10 +25,6 @@ export function LoginForm({
     AuthState,
     FormData
   >(signUpWithPassword, {});
-  const [resendState, resendAction, resendPending] = useActionState<
-    AuthState,
-    FormData
-  >(resendConfirmation, {});
 
   const isSignup = mode === "signup";
   const state = isSignup ? signUpState : signInState;
@@ -144,28 +139,6 @@ export function LoginForm({
               : "Se connecter"}
         </button>
       </form>
-
-      {/* After a sign-up awaiting confirmation, let the user re-trigger the
-          e-mail in case the first one never arrived (often a spam/SMTP issue). */}
-      {signUpState.pendingEmail && (
-        <form action={resendAction} className="text-center text-sm">
-          <input type="hidden" name="email" value={signUpState.pendingEmail} />
-          <span className="text-muted">E-mail non reçu ? </span>
-          <button
-            type="submit"
-            disabled={resendPending}
-            className="font-medium text-accent transition-colors hover:underline disabled:opacity-60"
-          >
-            {resendPending ? "Envoi…" : "Renvoyer l'e-mail"}
-          </button>
-          {resendState.error && (
-            <p className="mt-1 text-danger">{resendState.error}</p>
-          )}
-          {resendState.message && (
-            <p className="mt-1 text-success">{resendState.message}</p>
-          )}
-        </form>
-      )}
     </div>
   );
 }

@@ -12,10 +12,7 @@ select
 ## Connexion
 - **E-mail + mot de passe** : inscription et connexion réactivées, aux côtés de Google.
 - **Onglets Connexion / Inscription** : bascule de l'un à l'autre sans quitter la page.
-
-## Tu n'as pas reçu l'e-mail de confirmation ?
-- Un bouton **« Renvoyer l'e-mail »** apparaît juste après l'inscription pour relancer le message.
-- Pense à regarder tes **courriers indésirables** : le mail de confirmation s'y glisse parfois.
+- **Inscription immédiate** : ton compte est créé et tu es connecté dans la foulée.
 
 Bon retour sur Mugen. ⚽$md$,
   true
