@@ -7,7 +7,7 @@
 // Requires the same CRON_SECRET env var the route checks. `URL` is injected by
 // Netlify and holds the site's primary URL.
 
-export default async () => {
+const handler = async () => {
   const base = process.env.URL ?? process.env.DEPLOY_PRIME_URL;
   const secret = process.env.CRON_SECRET;
   if (!base || !secret) {
@@ -23,6 +23,8 @@ export default async () => {
   console.log(`[settle-cron] ${res.status} ${body}`);
   return new Response(body, { status: res.status });
 };
+
+export default handler;
 
 // Hourly, matching the original vercel.json schedule.
 export const config = { schedule: "@hourly" };
