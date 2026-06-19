@@ -74,7 +74,7 @@ export function LoginForm({
         </button>
       </form>
 
-      {/*<div className="flex items-center gap-3 text-xs text-muted">
+      <div className="flex items-center gap-3 text-xs text-muted">
         <span className="h-px flex-1 bg-border" />
         ou
         <span className="h-px flex-1 bg-border" />
@@ -83,8 +83,8 @@ export function LoginForm({
       <form action={isSignup ? signUpAction : signInAction} className="space-y-3">
         <input type="hidden" name="redirect" value={redirectTo} />
 
-         Signup adds the pseudo beside the e-mail so the form keeps the same
-            number of rows as sign-in — toggling never shifts the layout.
+        {/* Signup adds the pseudo beside the e-mail so the form keeps the same
+            number of rows as sign-in — toggling never shifts the layout. */}
         {isSignup ? (
           <div className="grid grid-cols-2 gap-3">
             <Field
@@ -138,7 +138,7 @@ export function LoginForm({
               ? "Créer mon compte"
               : "Se connecter"}
         </button>
-      </form>*/}
+      </form>
     </div>
   );
 }

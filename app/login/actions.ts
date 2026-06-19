@@ -76,7 +76,9 @@ export async function signUpWithPassword(
   });
   if (error) return { error: error.message };
 
-  // If email confirmation is enabled, there's no active session yet.
+  // With e-mail confirmation disabled, signUp returns a session and we redirect
+  // straight away. This branch is a defensive fallback if confirmation is ever
+  // re-enabled in the Supabase dashboard.
   if (!data.session) {
     return {
       message: "Compte créé. Vérifiez votre e-mail pour confirmer l'inscription.",
