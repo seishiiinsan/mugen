@@ -16,8 +16,21 @@ export interface GroupSettingsState {
   error?: string;
 }
 
-/** Refuse the join if the group sets a level requirement the user doesn't meet.
- *  Returns an error message, or null when allowed (or when checks are skipped). */
+/**
+ * App-side join gate. Returns an error message to show the user, or null when
+ * allowed (or when checks are skipped).
+ *
+ * ⚠️ This is the ONLY place `min_level` is enforced, and it is a UX guard-rail,
+ * NOT a security barrier. The join RPCs (`join_group` / `join_public_group`)
+ * check `max_members` in SQL but deliberately do NOT check `min_level`: the XP
+ * barème (per-achievement XP + `levelFromXp`) lives in lib/domain/economy.ts and
+ * is never stored in the DB (see migration 0022), so SQL can't cheaply recompute
+ * a level. Since those RPCs are `authenticated`-granted (callable directly with
+ * the anon key + a JWT), a below-level player can bypass this check by calling
+ * the RPC directly. Accepted trade-off — low stakes (group membership, no money
+ * or ranking). To make it a real barrier, mirror the barème into SQL and enforce
+ * it in the join RPCs. `max_members`, by contrast, IS authoritative (SQL-checked).
+ */
 async function blockedByGate(opts: {
   groupId?: string;
   code?: string;

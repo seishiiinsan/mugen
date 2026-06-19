@@ -2,9 +2,17 @@
 -- 0029 — Réglages de groupe : nombre max de membres + niveau requis.
 --
 -- Le propriétaire édite les réglages depuis la page paramètres. La capacité est
--- vérifiée côté base (atomique, anti-course) dans les RPC d'adhésion. Le niveau
--- requis est vérifié côté app (le calcul du niveau, qui inclut l'XP des succès,
--- vit dans le code) via group_gate + getMyLevel.
+-- vérifiée côté base (atomique, anti-course) dans les RPC d'adhésion.
+--
+-- ⚠️ Le niveau requis (min_level) est, lui, un GARDE-FOU UX, pas une barrière :
+-- il n'est vérifié QUE côté app (Server Action blockedByGate via getMyLevel),
+-- car le barème d'XP (XP par succès + levelFromXp) vit dans
+-- lib/domain/economy.ts et n'est volontairement jamais stocké en base (cf.
+-- 0022). Ces RPC `authenticated` étant appelables directement (clé anon + JWT),
+-- le palier est techniquement contournable. Compromis assumé : enjeu faible
+-- (appartenance à un groupe, ni argent ni classement). Note durable attachée
+-- aux fonctions en 0033. Pour une vraie barrière : mirrorer le barème en SQL
+-- (achievement_xp + level_from_xp) et l'imposer dans join_group/join_public_group.
 -- À exécuter dans le SQL Editor APRÈS 0028.
 -- ---------------------------------------------------------------------------
 
@@ -102,8 +110,9 @@ $$;
 grant execute on function public.group_gate(uuid, text) to authenticated;
 
 -- ---------------------------------------------------------------------------
--- join_group (recréée) : applique la capacité max (le niveau est vérifié côté
--- app avant l'appel).
+-- join_group (recréée) : applique la capacité max. min_level n'est PAS vérifié
+-- ici — garde-fou UX côté app (blockedByGate), contournable par appel direct
+-- à la RPC. Voir l'entête de cette migration + 0033.
 -- ---------------------------------------------------------------------------
 create or replace function public.join_group(p_code text)
 returns uuid language plpgsql security definer set search_path = public
@@ -131,6 +140,7 @@ begin
     end if;
   end if;
 
+  -- Pas de contrôle de min_level ici : garde-fou UX côté app (cf. entête).
   insert into public.group_members (group_id, user_id)
     values (v_id, v_uid) on conflict do nothing;
   return v_id;
@@ -139,7 +149,8 @@ $$;
 grant execute on function public.join_group(text) to authenticated;
 
 -- ---------------------------------------------------------------------------
--- join_public_group (recréée) : capacité max incluse.
+-- join_public_group (recréée) : capacité max incluse. min_level idem join_group
+-- — garde-fou UX côté app (blockedByGate), non imposé ici. Voir entête + 0033.
 -- ---------------------------------------------------------------------------
 create or replace function public.join_public_group(p_group uuid)
 returns uuid language plpgsql security definer set search_path = public
@@ -163,6 +174,7 @@ begin
     end if;
   end if;
 
+  -- Pas de contrôle de min_level ici : garde-fou UX côté app (cf. entête).
   insert into public.group_members (group_id, user_id)
     values (p_group, v_uid) on conflict do nothing;
   return p_group;
