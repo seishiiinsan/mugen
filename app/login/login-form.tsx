@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import {
+  resendConfirmation,
   signInWithGoogle,
   signInWithPassword,
   signUpWithPassword,
@@ -25,6 +26,10 @@ export function LoginForm({
     AuthState,
     FormData
   >(signUpWithPassword, {});
+  const [resendState, resendAction, resendPending] = useActionState<
+    AuthState,
+    FormData
+  >(resendConfirmation, {});
 
   const isSignup = mode === "signup";
   const state = isSignup ? signUpState : signInState;
@@ -74,7 +79,7 @@ export function LoginForm({
         </button>
       </form>
 
-      {/*<div className="flex items-center gap-3 text-xs text-muted">
+      <div className="flex items-center gap-3 text-xs text-muted">
         <span className="h-px flex-1 bg-border" />
         ou
         <span className="h-px flex-1 bg-border" />
@@ -83,8 +88,8 @@ export function LoginForm({
       <form action={isSignup ? signUpAction : signInAction} className="space-y-3">
         <input type="hidden" name="redirect" value={redirectTo} />
 
-         Signup adds the pseudo beside the e-mail so the form keeps the same
-            number of rows as sign-in — toggling never shifts the layout.
+        {/* Signup adds the pseudo beside the e-mail so the form keeps the same
+            number of rows as sign-in — toggling never shifts the layout. */}
         {isSignup ? (
           <div className="grid grid-cols-2 gap-3">
             <Field
@@ -138,7 +143,29 @@ export function LoginForm({
               ? "Créer mon compte"
               : "Se connecter"}
         </button>
-      </form>*/}
+      </form>
+
+      {/* After a sign-up awaiting confirmation, let the user re-trigger the
+          e-mail in case the first one never arrived (often a spam/SMTP issue). */}
+      {signUpState.pendingEmail && (
+        <form action={resendAction} className="text-center text-sm">
+          <input type="hidden" name="email" value={signUpState.pendingEmail} />
+          <span className="text-muted">E-mail non reçu ? </span>
+          <button
+            type="submit"
+            disabled={resendPending}
+            className="font-medium text-accent transition-colors hover:underline disabled:opacity-60"
+          >
+            {resendPending ? "Envoi…" : "Renvoyer l'e-mail"}
+          </button>
+          {resendState.error && (
+            <p className="mt-1 text-danger">{resendState.error}</p>
+          )}
+          {resendState.message && (
+            <p className="mt-1 text-success">{resendState.message}</p>
+          )}
+        </form>
+      )}
     </div>
   );
 }
