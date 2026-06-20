@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -23,6 +24,28 @@ const ACH_NAME = new Map(ACHIEVEMENTS.map((a) => [a.key, a.name]));
 
 const canSee = (v: VisibilityValue, rel: Relation) =>
   rel === "self" || v === "everyone" || (v === "friends" && rel === "friends");
+
+export async function generateMetadata(
+  props: PageProps<"/joueur/[username]">,
+): Promise<Metadata> {
+  const { username } = await props.params;
+  const overview = await getProfileOverview(decodeURIComponent(username));
+  if (!overview) return { title: "Joueur · Mugen" };
+
+  const title = `${overview.username} · Mugen`;
+  const description = `Profil de ${overview.username} sur Mugen — pronostics, succès et niveau.`;
+  return {
+    title,
+    description,
+    openGraph: {
+      type: "profile",
+      url: `/joueur/${overview.username}`,
+      title,
+      description,
+    },
+    twitter: { card: "summary", title, description },
+  };
+}
 
 export default async function PublicProfilePage(
   props: PageProps<"/joueur/[username]">,

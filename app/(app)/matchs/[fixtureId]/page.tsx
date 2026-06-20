@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getFixture, getMyBoostStock, getPredictionForFixture } from "@/lib/data";
@@ -14,6 +15,30 @@ import { TeamCrest } from "../../_components/team-crest";
 import { PredictionForm, type ScorerOption } from "./prediction-form";
 import { MatchExtras } from "./match-extras";
 import { MatchTabs } from "./match-tabs";
+
+export async function generateMetadata(
+  props: PageProps<"/matchs/[fixtureId]">,
+): Promise<Metadata> {
+  const { fixtureId } = await props.params;
+  const id = Number(fixtureId);
+  if (Number.isNaN(id)) return { title: "Match · Mugen" };
+  const fixture = await getFixture(id);
+  if (!fixture) return { title: "Match · Mugen" };
+
+  const title = `${fixture.home.name} – ${fixture.away.name} · Mugen`;
+  const description = `${fixture.home.name} – ${fixture.away.name} · ${fixture.league.name}. Pronostique le score exact sur Mugen.`;
+  return {
+    title,
+    description,
+    openGraph: {
+      type: "website",
+      url: `/matchs/${fixture.id}`,
+      title,
+      description,
+    },
+    twitter: { card: "summary", title, description },
+  };
+}
 
 export default async function FixturePage(
   props: PageProps<"/matchs/[fixtureId]">,
