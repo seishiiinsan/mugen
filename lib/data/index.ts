@@ -39,6 +39,8 @@ import type {
   MonthlyChampion,
   MySeason,
   SeasonReward,
+  PlayerStats,
+  TeamRef,
   NotificationItem,
   Prediction,
   ProfileOverview,
@@ -736,7 +738,7 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
   if (!user) return null;
 
   const cols =
-    "username, avatar_url, created_at, coins, equipped_frame, equipped_title, equipped_color, equipped_badge";
+    "username, avatar_url, created_at, coins, equipped_frame, equipped_title, equipped_color, equipped_badge, favorite_team_id";
   let { data: profile } = await supabase
     .from("profiles")
     .select(cols)
@@ -769,6 +771,7 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
     equippedTitle: profile?.equipped_title ?? null,
     equippedColor: profile?.equipped_color ?? null,
     equippedBadge: profile?.equipped_badge ?? null,
+    favoriteTeamId: profile?.favorite_team_id ?? null,
   };
 }
 
@@ -781,6 +784,64 @@ interface ProfileSelfRow {
   equipped_title: string | null;
   equipped_color: string | null;
   equipped_badge: string | null;
+  favorite_team_id: number | null;
+}
+
+// ---------------------------------------------------------------------------
+// PROFIL DE PRONOSTIQUEUR — agrégats perso (player_stats) + club de cœur.
+// ---------------------------------------------------------------------------
+
+/**
+ * The current user's forecaster dashboard: one `player_stats()` round-trip that
+ * aggregates their settled predictions in SQL. Per-user, so not cached. Returns
+ * null when signed out / unconfigured (the page then shows its empty state).
+ */
+export async function getPlayerStats(): Promise<PlayerStats | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase.rpc("player_stats");
+  if (error || !data) return null;
+  return data as PlayerStats;
+}
+
+interface TeamRow {
+  id: number;
+  name: string;
+  logo: string | null;
+}
+
+/** Distinct teams in the fixtures cache (club-de-cœur selector). Cached. */
+const getCachedKnownTeams = unstable_cache(
+  async (): Promise<TeamRef[]> => {
+    const supabase = createPublicClient();
+    const { data } = await supabase.rpc("list_teams");
+    return ((data as TeamRow[] | null) ?? []).map((t) => ({
+      teamId: t.id,
+      name: t.name,
+      logo: t.logo ?? undefined,
+    }));
+  },
+  ["known-teams"],
+  { revalidate: 3600 },
+);
+
+export async function getKnownTeams(): Promise<TeamRef[]> {
+  if (!isSupabaseConfigured()) return [];
+  return getCachedKnownTeams();
+}
+
+/** Resolve a favorite team id to its name/logo via the cached team list. */
+export async function resolveFavoriteTeam(
+  teamId: number | null,
+): Promise<TeamRef | null> {
+  if (teamId == null || !isSupabaseConfigured()) return null;
+  const teams = await getKnownTeams();
+  return teams.find((t) => t.teamId === teamId) ?? null;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser, getMyVisibility } from "@/lib/data";
+import { getCurrentUser, getKnownTeams, getMyVisibility } from "@/lib/data";
 import { ChevronLeftIcon } from "../../_components/icons";
+import { FavoriteTeamForm } from "./favorite-team-form";
 import { ProfileForm } from "./profile-form";
 import { VisibilityForm } from "./visibility-form";
 
 export default async function EditProfilePage() {
-  const [me, visibility] = await Promise.all([
+  const [me, visibility, teams] = await Promise.all([
     getCurrentUser(),
     getMyVisibility(),
+    getKnownTeams(),
   ]);
   if (!me) redirect("/login");
 
@@ -27,6 +29,8 @@ export default async function EditProfilePage() {
       </h1>
 
       <ProfileForm initialUsername={me.username} initialAvatar={me.avatarUrl} />
+
+      <FavoriteTeamForm teams={teams} initialId={me.favoriteTeamId} />
 
       <VisibilityForm initial={visibility} />
     </section>

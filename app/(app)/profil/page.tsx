@@ -12,6 +12,7 @@ import {
   getMyLevel,
   getMyMonthlyStats,
   getMyPredictions,
+  resolveFavoriteTeam,
 } from "@/lib/data";
 import { SCORING_RULES, scorePrediction } from "@/lib/domain/scoring";
 import {
@@ -30,6 +31,7 @@ import {
   titleText,
 } from "@/lib/domain/cosmetics";
 import { signOut } from "@/app/login/actions";
+import { TeamCrest } from "../_components/team-crest";
 import {
   ChevronLeftIcon,
   CoinIcon,
@@ -38,6 +40,7 @@ import {
   InfoIcon,
   LockIcon,
   LogoutIcon,
+  StatsIcon,
 } from "../_components/icons";
 
 /** Display config for each points tier, mono-accent (no rainbow per MASTER). */
@@ -93,6 +96,7 @@ export default async function ProfilPage() {
   const unlocked = new Set(achievementKeys);
   const levelPct = Math.round((level.current / level.needed) * 100);
   const showcaseBadge = me.equippedBadge ? BADGE_META[me.equippedBadge] : null;
+  const favoriteTeam = await resolveFavoriteTeam(me.favoriteTeamId);
 
   const fixtures = await getFixturesByIds(predictions.map((p) => p.fixtureId));
   const byId = new Map(fixtures.map((f) => [f.id, f]));
@@ -240,6 +244,18 @@ export default async function ProfilPage() {
               <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold tabular-nums text-accent">
                 Niv. {level.level}
               </span>
+              {favoriteTeam && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-0.5 text-xs font-medium">
+                  <TeamCrest
+                    name={favoriteTeam.name}
+                    logoUrl={favoriteTeam.logo}
+                    size={14}
+                  />
+                  <span className="max-w-[7rem] truncate">
+                    {favoriteTeam.name}
+                  </span>
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -271,6 +287,27 @@ export default async function ProfilPage() {
           <Fact label="En attente" value={pending} />
         </div>
       </div>
+
+      {/* Pronostiqueur dashboard entry */}
+      <Link
+        href="/mes-stats"
+        className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 transition-colors hover:border-accent/40"
+      >
+        <div className="flex items-center gap-2.5">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent/10 text-accent">
+            <StatsIcon className="size-5" />
+          </span>
+          <div>
+            <div className="text-sm font-semibold">
+              Mon profil de pronostiqueur
+            </div>
+            <div className="text-xs text-muted">
+              Forme, ligues et équipes, répartition des points.
+            </div>
+          </div>
+        </div>
+        <ChevronLeftIcon className="size-4 shrink-0 rotate-180 text-faint" />
+      </Link>
 
       {/* Monthly boosts */}
       <div>

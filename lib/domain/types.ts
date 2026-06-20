@@ -155,6 +155,74 @@ export interface UserProfile {
   equippedTitle: string | null;
   equippedColor: string | null;
   equippedBadge: string | null;
+  /** Favorite team (API-Football id), null when unset. */
+  favoriteTeamId: number | null;
+}
+
+// ---------------------------------------------------------------------------
+// PROFIL DE PRONOSTIQUEUR — tableau de bord agrégé (player_stats) + club de cœur
+// ---------------------------------------------------------------------------
+
+/** A team reference resolved from the fixtures cache. */
+export interface TeamRef {
+  teamId: number;
+  name: string;
+  logo?: string;
+}
+
+/** One of the last settled predictions (recent form). */
+export interface FormEntry {
+  home: string;
+  away: string;
+  /** Un-boosted score earned. */
+  basePoints: number;
+  /** Final score earned (after boost). */
+  points: number;
+  kickoff: string;
+}
+
+/** A base-score bucket count (points distribution). */
+export interface ScoreBucket {
+  base: number;
+  count: number;
+}
+
+/** Per-league performance (only leagues with ≥3 predictions). */
+export interface LeaguePerf {
+  leagueId: number;
+  leagueName: string;
+  leagueLogo?: string;
+  count: number;
+  avgBase: number;
+  hitRate: number;
+}
+
+/** Per-team performance (only teams with ≥3 predictions). */
+export interface TeamPerf extends TeamRef {
+  count: number;
+  avgBase: number;
+}
+
+/** The favorite team with the viewer's record on it (count 0 if never played). */
+export interface FavoriteTeamPerf extends TeamRef {
+  count: number;
+  avgBase: number | null;
+}
+
+/** The owner's pronostiqueur dashboard (one `player_stats()` round-trip). */
+export interface PlayerStats {
+  overall: {
+    settled: number;
+    hits: number;
+    exacts: number;
+    avgBase: number;
+    totalPoints: number;
+  };
+  form: FormEntry[];
+  distribution: ScoreBucket[];
+  byLeague: LeaguePerf[];
+  byTeam: TeamPerf[];
+  favoriteTeam: FavoriteTeamPerf | null;
 }
 
 /** A shop catalog entry with the viewer's ownership/equipped state. */

@@ -4,7 +4,11 @@ import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import type { VisibilityAspect, VisibilityValue } from "@/lib/domain/types";
+import type {
+  ActionResult,
+  VisibilityAspect,
+  VisibilityValue,
+} from "@/lib/domain/types";
 
 export interface ProfileFormState {
   error?: string;
@@ -112,4 +116,23 @@ export async function updateProfile(
   }
 
   redirect(`/profil?t=${encodeURIComponent("Profil enregistré.")}`);
+}
+
+/** Set (or clear with null) the caller's favorite team. Validated server-side. */
+export async function setFavoriteTeam(
+  teamId: number | null,
+): Promise<ActionResult> {
+  if (!isSupabaseConfigured()) return { ok: false, message: "Indisponible." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_favorite_team", {
+    p_team_id: teamId,
+  });
+  if (error) {
+    return { ok: false, message: "Impossible d'enregistrer le club de cœur." };
+  }
+  refresh();
+  return {
+    ok: true,
+    message: teamId == null ? "Club de cœur retiré." : "Club de cœur enregistré.",
+  };
 }
