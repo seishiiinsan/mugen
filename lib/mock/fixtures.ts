@@ -27,6 +27,7 @@ export const CURRENT_USER: UserProfile = {
   equippedTitle: null,
   equippedColor: null,
   equippedBadge: null,
+  favoriteTeamId: null,
 };
 
 export const MOCK_FIXTURES: Fixture[] = [

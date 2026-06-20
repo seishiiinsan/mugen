@@ -118,6 +118,15 @@ export function SeasonIcon({ className }: IconProps) {
   );
 }
 
+export function StatsIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M4 20h16" />
+      <path d="M7 20v-6M12 20v-10M17 20v-4" />
+    </svg>
+  );
+}
+
 export function LogoutIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>
