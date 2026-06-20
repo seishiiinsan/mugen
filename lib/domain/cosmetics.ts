@@ -61,6 +61,7 @@ export const BADGE_META: Record<string, { emoji: string; label: string }> = {
   badge_month_gold: { emoji: "🥇", label: "Champion du mois" },
   badge_month_silver: { emoji: "🥈", label: "Vice-champion" },
   badge_month_bronze: { emoji: "🥉", label: "Podium du mois" },
+  badge_season: { emoji: "🎖️", label: "Saison" },
   // Buteurs
   badge_scorer_first: { emoji: "⚽", label: "Premier bon buteur" },
   badge_scorer_10: { emoji: "🥅", label: "10 buteurs trouvés" },

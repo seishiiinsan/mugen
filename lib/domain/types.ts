@@ -98,6 +98,49 @@ export interface RankedPlayer {
   level?: number;
 }
 
+// ---------------------------------------------------------------------------
+// SAISON — pass saisonnier (paliers réclamables) + Hall of Fame
+// ---------------------------------------------------------------------------
+
+/** A season-pass tier from the catalogue (`season_rewards`, DB-authoritative). */
+export interface SeasonReward {
+  tier: number;
+  /** Monthly-points threshold to reach this tier. */
+  minPoints: number;
+  /** Coins granted on claim. */
+  coins: number;
+  /** Repeatable badge item granted on claim, if any. */
+  badgeKey: string | null;
+  name: string;
+}
+
+/** A season tier with the current user's progress/claim state for the month. */
+export interface SeasonTierState extends SeasonReward {
+  /** Player's active-month points ≥ this tier's threshold. */
+  reached: boolean;
+  /** Already claimed this month. */
+  claimed: boolean;
+}
+
+/** The current user's season pass for the active month. */
+export interface MySeason {
+  /** Points earned in the active month (drives tier progress). */
+  points: number;
+  tiers: SeasonTierState[];
+}
+
+/** A past monthly champion in the Hall of Fame (`monthly_champions`). */
+export interface MonthlyChampion {
+  /** 'YYYY-MM' of the closed month. */
+  month: string;
+  rank: number;
+  userId: string;
+  username: string;
+  avatarUrl?: string;
+  points: number;
+  exacts: number;
+}
+
 export interface UserProfile {
   id: string;
   username: string;

@@ -110,6 +110,14 @@ export function BadgeIcon({ className }: IconProps) {
   );
 }
 
+export function SeasonIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M12 2.5l2.59 5.25 5.79.84-4.19 4.08.99 5.76-5.18-2.72-5.18 2.72.99-5.76-4.19-4.08 5.79-.84z" />
+    </svg>
+  );
+}
+
 export function LogoutIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

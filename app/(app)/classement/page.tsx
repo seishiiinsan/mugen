@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import {
   getCoinsLeaderboard,
   getCurrentUser,
+  getMonthlyChampions,
   getMonthlyLeaderboard,
   getXpLeaderboard,
 } from "@/lib/data";
@@ -9,10 +10,11 @@ import { CrownIcon } from "../_components/icons";
 import { ClassementTabs } from "./_components/classement-tabs";
 
 export default async function ClassementPage() {
-  const [monthly, coins, xp, me] = await Promise.all([
+  const [monthly, coins, xp, champions, me] = await Promise.all([
     getMonthlyLeaderboard(),
     getCoinsLeaderboard(),
     getXpLeaderboard(),
+    getMonthlyChampions(),
     getCurrentUser(),
   ]);
   if (!me) redirect("/login");
@@ -44,6 +46,7 @@ export default async function ClassementPage() {
         monthly={monthly}
         coins={coins}
         xp={xp}
+        champions={champions}
         meId={me.id}
         monthLabel={month}
       />
