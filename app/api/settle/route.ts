@@ -1,4 +1,6 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
+import { LEADERBOARD_TAG } from "@/lib/data";
 import { settlePredictions } from "@/lib/settle";
 
 // Settle finished predictions. Intended to be hit by a scheduler (e.g. Vercel
@@ -21,6 +23,11 @@ async function handle(request: Request): Promise<NextResponse> {
   }
 
   const result = await settlePredictions();
+  // Points changed → mark the cached leaderboards stale so the next render
+  // refreshes them ("max" = stale-while-revalidate, the Next 16 default).
+  if (result.predictionsUpdated > 0) {
+    revalidateTag(LEADERBOARD_TAG, "max");
+  }
   return NextResponse.json(result);
 }
 

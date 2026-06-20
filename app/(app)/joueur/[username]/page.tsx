@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -13,12 +14,38 @@ import type { Relation, VisibilityValue } from "@/lib/domain/types";
 import { ChevronLeftIcon, LockIcon } from "../../_components/icons";
 import { TeamCrest } from "../../_components/team-crest";
 import { formatMatchDay, formatTime } from "@/lib/ui/format";
-import { RelationButton } from "../../amis/_components/social-buttons";
+import {
+  BlockButton,
+  RelationButton,
+  UnblockButton,
+} from "../../amis/_components/social-buttons";
 
 const ACH_NAME = new Map(ACHIEVEMENTS.map((a) => [a.key, a.name]));
 
 const canSee = (v: VisibilityValue, rel: Relation) =>
   rel === "self" || v === "everyone" || (v === "friends" && rel === "friends");
+
+export async function generateMetadata(
+  props: PageProps<"/joueur/[username]">,
+): Promise<Metadata> {
+  const { username } = await props.params;
+  const overview = await getProfileOverview(decodeURIComponent(username));
+  if (!overview) return { title: "Joueur · Mugen" };
+
+  const title = `${overview.username} · Mugen`;
+  const description = `Profil de ${overview.username} sur Mugen — pronostics, succès et niveau.`;
+  return {
+    title,
+    description,
+    openGraph: {
+      type: "profile",
+      url: `/joueur/${overview.username}`,
+      title,
+      description,
+    },
+    twitter: { card: "summary", title, description },
+  };
+}
 
 export default async function PublicProfilePage(
   props: PageProps<"/joueur/[username]">,
@@ -41,9 +68,10 @@ export default async function PublicProfilePage(
     overview.relation,
   );
 
-  const upcoming = showPredictions
-    ? await getUserUpcomingPredictions(overview.id)
-    : [];
+  const upcoming =
+    !overview.blocked && showPredictions
+      ? await getUserUpcomingPredictions(overview.id)
+      : [];
 
   const achievementKeys = overview.achievementKeys ?? [];
   const achXp = ACHIEVEMENTS.filter((a) => achievementKeys.includes(a.key)).reduce(
@@ -124,98 +152,112 @@ export default async function PublicProfilePage(
               >
                 Mon profil
               </Link>
+            ) : overview.blocked ? (
+              <UnblockButton userId={overview.id} />
             ) : (
-              <RelationButton userId={overview.id} relation={overview.relation} />
+              <span className="flex items-center gap-1.5">
+                <RelationButton userId={overview.id} relation={overview.relation} />
+                <BlockButton userId={overview.id} />
+              </span>
             )}
           </div>
         </div>
       </header>
 
-      {/* Stats */}
-      {showStats ? (
-        <div className="grid grid-cols-3 gap-3">
-          <Stat label="Points cumulés" value={overview.lifetimePoints ?? 0} accent />
-          <Stat label="Scores exacts" value={overview.exactScores ?? 0} />
-          <Stat label="Niveau" value={level ?? 1} />
+      {overview.blocked ? (
+        <div className="flex items-center gap-2 rounded-xl border border-dashed border-border p-4 text-sm text-faint">
+          <LockIcon className="size-4 shrink-0" />
+          Tu as bloqué ce joueur. Débloque-le pour revoir son profil.
         </div>
       ) : (
-        <Private label="Statistiques privées" />
-      )}
-
-      {/* Friends count */}
-      {showFriends ? (
-        <div className="rounded-xl border border-border bg-surface p-4">
-          <span className="font-mono text-lg font-bold tabular-nums">
-            {overview.friendCount ?? 0}
-          </span>{" "}
-          <span className="text-sm text-muted">
-            ami{(overview.friendCount ?? 0) > 1 ? "s" : ""}
-          </span>
-        </div>
-      ) : (
-        <Private label="Liste d'amis privée" />
-      )}
-
-      {/* Achievements */}
-      {showAchievements ? (
-        achievementKeys.length > 0 ? (
-          <div>
-            <SectionTitle>Succès · {achievementKeys.length}</SectionTitle>
-            <ul className="flex flex-wrap gap-1.5">
-              {achievementKeys.map((key) => (
-                <li
-                  key={key}
-                  className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-muted"
-                >
-                  {ACH_NAME.get(key) ?? key}
-                </li>
-              ))}
-            </ul>
+        <>
+        {/* Stats */}
+        {showStats ? (
+          <div className="grid grid-cols-3 gap-3">
+            <Stat label="Points cumulés" value={overview.lifetimePoints ?? 0} accent />
+            <Stat label="Scores exacts" value={overview.exactScores ?? 0} />
+            <Stat label="Niveau" value={level ?? 1} />
           </div>
         ) : (
-          <div>
-            <SectionTitle>Succès</SectionTitle>
-            <p className="text-sm text-faint">Aucun succès débloqué.</p>
-          </div>
-        )
-      ) : (
-        <Private label="Succès privés" />
-      )}
+          <Private label="Statistiques privées" />
+        )}
 
-      {/* Upcoming predictions */}
-      {showPredictions ? (
-        <div>
-          <SectionTitle>Pronostics à venir</SectionTitle>
-          {upcoming.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">
-              Aucun pronostic à venir.
-            </p>
+        {/* Friends count */}
+        {showFriends ? (
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <span className="font-mono text-lg font-bold tabular-nums">
+              {overview.friendCount ?? 0}
+            </span>{" "}
+            <span className="text-sm text-muted">
+              ami{(overview.friendCount ?? 0) > 1 ? "s" : ""}
+            </span>
+          </div>
+        ) : (
+          <Private label="Liste d'amis privée" />
+        )}
+
+        {/* Achievements */}
+        {showAchievements ? (
+          achievementKeys.length > 0 ? (
+            <div>
+              <SectionTitle>Succès · {achievementKeys.length}</SectionTitle>
+              <ul className="flex flex-wrap gap-1.5">
+                {achievementKeys.map((key) => (
+                  <li
+                    key={key}
+                    className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-muted"
+                  >
+                    {ACH_NAME.get(key) ?? key}
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : (
-            <ul className="space-y-2">
-              {upcoming.map((p) => (
-                <li
-                  key={p.fixtureId}
-                  className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3"
-                >
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    <Side name={p.homeTeam} logo={p.homeLogo} />
-                    <Side name={p.awayTeam} logo={p.awayLogo} />
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <span className="rounded-md bg-accent/10 px-1.5 py-0.5 font-mono text-sm font-semibold tabular-nums text-accent">
-                      {p.homeGoals}-{p.awayGoals}
-                    </span>
-                    <div className="mt-1 text-[11px] text-faint">
-                      {formatMatchDay(p.kickoff)} · {formatTime(p.kickoff)}
+            <div>
+              <SectionTitle>Succès</SectionTitle>
+              <p className="text-sm text-faint">Aucun succès débloqué.</p>
+            </div>
+          )
+        ) : (
+          <Private label="Succès privés" />
+        )}
+
+        {/* Upcoming predictions */}
+        {showPredictions ? (
+          <div>
+            <SectionTitle>Pronostics à venir</SectionTitle>
+            {upcoming.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">
+                Aucun pronostic à venir.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {upcoming.map((p) => (
+                  <li
+                    key={p.fixtureId}
+                    className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3"
+                  >
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <Side name={p.homeTeam} logo={p.homeLogo} />
+                      <Side name={p.awayTeam} logo={p.awayLogo} />
                     </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ) : (
-        <Private label="Pronostics privés" />
+                    <div className="shrink-0 text-right">
+                      <span className="rounded-md bg-accent/10 px-1.5 py-0.5 font-mono text-sm font-semibold tabular-nums text-accent">
+                        {p.homeGoals}-{p.awayGoals}
+                      </span>
+                      <div className="mt-1 text-[11px] text-faint">
+                        {formatMatchDay(p.kickoff)} · {formatTime(p.kickoff)}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : (
+          <Private label="Pronostics privés" />
+        )}
+        </>
       )}
     </section>
   );

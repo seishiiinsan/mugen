@@ -9,6 +9,8 @@
 
 import "server-only";
 
+import { unstable_cache } from "next/cache";
+
 import {
   CURRENT_USER,
   MOCK_FIXTURES,
@@ -59,6 +61,7 @@ import {
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, isAdminConfigured } from "@/lib/supabase/admin";
+import { createPublicClient } from "@/lib/supabase/public";
 import { ensureProfile } from "@/lib/supabase/ensure-profile";
 import {
   fetchFixtureById,
@@ -404,75 +407,51 @@ export async function getMyBoostStock(
   return { used, remaining: BOOST_TYPES.filter((b) => !used.includes(b)) };
 }
 
-interface LeaderboardRow {
+// Global boards (monthly / coins / XP) are user-agnostic and only change when
+// predictions settle (hourly). They are cached with a cookieless client and
+// invalidated by `revalidateTag(LEADERBOARD_TAG)` from the settle route, so a
+// page render no longer triggers full table scans + JS sort on every request.
+export const LEADERBOARD_TAG = "leaderboards";
+const LEADERBOARD_REVALIDATE = 3600; // backstop; settle invalidates the tag
+
+interface MonthlyRow {
+  rank: number;
   user_id: string;
+  username: string;
+  avatar_url: string | null;
   points: number;
   exact_scores: number;
 }
 
-interface ProfileRow {
-  id: string;
-  username: string;
-  avatar_url: string | null;
-}
-
 /**
- * Full monthly ranking, including players with 0 points: every profile is
- * listed, scored from the `monthly_leaderboard()` RPC, and ranked in JS
- * (standard competition ranking — ties share a rank). This works regardless of
- * whether the RPC itself returns 0-point rows.
+ * Top monthly players. Ranking + limit run in SQL (`monthly_leaderboard`, which
+ * also returns avatar_url), so the whole `profiles` table is no longer scanned
+ * and re-ranked in JS. Players with 0 settled points this month are not listed.
  */
-async function buildLeaderboard(): Promise<LeaderboardEntry[]> {
-  const supabase = await createClient();
-  const [{ data: scoredData }, { data: profilesData }] = await Promise.all([
-    supabase.rpc("monthly_leaderboard", { limit_count: 5000 }),
-    supabase.from("profiles").select("id, username, avatar_url"),
-  ]);
-
-  const scored = new Map<string, { points: number; exactScores: number }>();
-  for (const r of (scoredData as LeaderboardRow[] | null) ?? []) {
-    scored.set(r.user_id, {
+const getCachedMonthlyLeaderboard = unstable_cache(
+  async (): Promise<LeaderboardEntry[]> => {
+    const supabase = createPublicClient();
+    const { data } = await supabase.rpc("monthly_leaderboard", {
+      limit_count: 100,
+    });
+    return ((data as MonthlyRow[] | null) ?? []).map((r) => ({
+      rank: Number(r.rank),
+      userId: r.user_id,
+      username: r.username,
       points: Number(r.points),
       exactScores: Number(r.exact_scores),
-    });
-  }
-
-  const entries = ((profilesData as ProfileRow[] | null) ?? []).map((p) => {
-    const s = scored.get(p.id);
-    return {
-      userId: p.id,
-      username: p.username,
-      points: s?.points ?? 0,
-      exactScores: s?.exactScores ?? 0,
-      avatarUrl: p.avatar_url ?? undefined,
-    };
-  });
-
-  entries.sort(
-    (a, b) =>
-      b.points - a.points ||
-      b.exactScores - a.exactScores ||
-      a.username.localeCompare(b.username, "fr"),
-  );
-
-  let rank = 0;
-  let prevPoints = Number.NaN;
-  let prevExact = Number.NaN;
-  return entries.map((e, i) => {
-    if (i === 0 || e.points !== prevPoints || e.exactScores !== prevExact) {
-      rank = i + 1;
-      prevPoints = e.points;
-      prevExact = e.exactScores;
-    }
-    return { rank, ...e };
-  });
-}
+      avatarUrl: r.avatar_url ?? undefined,
+    }));
+  },
+  ["monthly-leaderboard"],
+  { tags: [LEADERBOARD_TAG], revalidate: LEADERBOARD_REVALIDATE },
+);
 
 export async function getMonthlyLeaderboard(): Promise<LeaderboardEntry[]> {
   if (!isSupabaseConfigured()) {
     return [...MOCK_LEADERBOARD].sort((a, b) => a.rank - b.rank);
   }
-  return (await buildLeaderboard()).slice(0, 100);
+  return getCachedMonthlyLeaderboard();
 }
 
 export interface MonthlyStats {
@@ -481,7 +460,17 @@ export interface MonthlyStats {
   exactScores: number;
 }
 
-/** Current user's monthly points, rank and exact-score count. */
+interface MyMonthlyRankRow {
+  points: number;
+  exact_scores: number;
+  rank: number;
+}
+
+/**
+ * Current user's monthly points, rank and exact-score count. Uses the dedicated
+ * `my_monthly_rank()` RPC (one row) instead of materializing the whole board.
+ * Per-user, so not cached.
+ */
 export async function getMyMonthlyStats(): Promise<MonthlyStats> {
   if (!isSupabaseConfigured()) {
     return {
@@ -497,10 +486,14 @@ export async function getMyMonthlyStats(): Promise<MonthlyStats> {
   } = await supabase.auth.getUser();
   if (!user) return { points: 0, rank: null, exactScores: 0 };
 
-  const me = (await buildLeaderboard()).find((e) => e.userId === user.id);
-  return me
-    ? { points: me.points, rank: me.rank, exactScores: me.exactScores }
-    : { points: 0, rank: null, exactScores: 0 };
+  const { data, error } = await supabase.rpc("my_monthly_rank");
+  const row = ((data as MyMonthlyRankRow[] | null) ?? [])[0];
+  if (error || !row) return { points: 0, rank: null, exactScores: 0 };
+  return {
+    points: Number(row.points),
+    rank: Number(row.rank),
+    exactScores: Number(row.exact_scores),
+  };
 }
 
 /** Standard competition ranking by `value` desc (ties share a rank). */
@@ -519,57 +512,79 @@ function rankByValue(entries: Omit<RankedPlayer, "rank">[]): RankedPlayer[] {
   });
 }
 
-/** All-time richest players, ranked by coin balance (no rewards, no reset). */
+/** All-time richest players, ranked by coin balance (no rewards, no reset).
+ *  Order + limit run in SQL; only the top 100 rows come back to be ranked. */
+const getCachedCoinsLeaderboard = unstable_cache(
+  async (): Promise<RankedPlayer[]> => {
+    const supabase = createPublicClient();
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, username, avatar_url, coins")
+      .order("coins", { ascending: false })
+      .order("username", { ascending: true })
+      .limit(100);
+    const entries = (
+      (data as { id: string; username: string; avatar_url: string | null; coins: number }[] | null) ??
+      []
+    ).map((p) => ({
+      userId: p.id,
+      username: p.username,
+      avatarUrl: p.avatar_url ?? undefined,
+      value: p.coins ?? 0,
+    }));
+    return rankByValue(entries);
+  },
+  ["coins-leaderboard"],
+  { tags: [LEADERBOARD_TAG], revalidate: LEADERBOARD_REVALIDATE },
+);
+
 export async function getCoinsLeaderboard(): Promise<RankedPlayer[]> {
   if (!isSupabaseConfigured()) return [];
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("profiles")
-    .select("id, username, avatar_url, coins");
-  const entries = (
-    (data as { id: string; username: string; avatar_url: string | null; coins: number }[] | null) ??
-    []
-  ).map((p) => ({
-    userId: p.id,
-    username: p.username,
-    avatarUrl: p.avatar_url ?? undefined,
-    value: p.coins ?? 0,
-  }));
-  return rankByValue(entries).slice(0, 100);
+  return getCachedCoinsLeaderboard();
 }
 
-/** All-time XP board, ranked by lifetime XP (no rewards, no reset). */
+/** All-time XP board, ranked by lifetime XP (no rewards, no reset). XP mixes
+ *  lifetime points with the achievement catalog (TS-side), so the ranking stays
+ *  in JS; the result is cached and only recomputed once per settle. */
+const getCachedXpLeaderboard = unstable_cache(
+  async (): Promise<RankedPlayer[]> => {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase.rpc("xp_standings");
+    if (error) {
+      console.error("[getXpLeaderboard]", error);
+      return [];
+    }
+    type Row = {
+      user_id: string;
+      username: string;
+      avatar_url: string | null;
+      points: number;
+      achievements: string[] | null;
+    };
+    const entries = ((data as Row[] | null) ?? []).map((r) => {
+      const unlocked = new Set(r.achievements ?? []);
+      const achXp = ACHIEVEMENTS.filter((a) => unlocked.has(a.key)).reduce(
+        (sum, a) => sum + a.xp,
+        0,
+      );
+      const xp = Number(r.points) * XP_PER_POINT + achXp;
+      return {
+        userId: r.user_id,
+        username: r.username,
+        avatarUrl: r.avatar_url ?? undefined,
+        value: xp,
+        level: levelFromXp(xp).level,
+      };
+    });
+    return rankByValue(entries).slice(0, 100);
+  },
+  ["xp-leaderboard"],
+  { tags: [LEADERBOARD_TAG], revalidate: LEADERBOARD_REVALIDATE },
+);
+
 export async function getXpLeaderboard(): Promise<RankedPlayer[]> {
   if (!isSupabaseConfigured()) return [];
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("xp_standings");
-  if (error) {
-    console.error("[getXpLeaderboard]", error);
-    return [];
-  }
-  type Row = {
-    user_id: string;
-    username: string;
-    avatar_url: string | null;
-    points: number;
-    achievements: string[] | null;
-  };
-  const entries = ((data as Row[] | null) ?? []).map((r) => {
-    const unlocked = new Set(r.achievements ?? []);
-    const achXp = ACHIEVEMENTS.filter((a) => unlocked.has(a.key)).reduce(
-      (sum, a) => sum + a.xp,
-      0,
-    );
-    const xp = Number(r.points) * XP_PER_POINT + achXp;
-    return {
-      userId: r.user_id,
-      username: r.username,
-      avatarUrl: r.avatar_url ?? undefined,
-      value: xp,
-      level: levelFromXp(xp).level,
-    };
-  });
-  return rankByValue(entries).slice(0, 100);
+  return getCachedXpLeaderboard();
 }
 
 export async function getCurrentUser(): Promise<UserProfile | null> {
@@ -1473,6 +1488,7 @@ interface OverviewRow {
   lifetime_points: number | null;
   exact_scores: number | null;
   achievement_keys: string[] | null;
+  blocked: boolean;
 }
 
 /** Public profile overview by username (aspects gated server-side). */
@@ -1511,6 +1527,7 @@ export async function getProfileOverview(
     lifetimePoints: num(r.lifetime_points),
     exactScores: num(r.exact_scores),
     achievementKeys: r.achievement_keys ?? null,
+    blocked: Boolean(r.blocked),
   };
 }
 

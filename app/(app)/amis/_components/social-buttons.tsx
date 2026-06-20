@@ -5,10 +5,12 @@ import type { ActionResult, Relation } from "@/lib/domain/types";
 import { CheckIcon, UserPlusIcon, XIcon } from "../../_components/icons";
 import { useToast } from "../../_components/toast";
 import {
+  blockUser,
   cancelFriendRequest,
   removeFriend,
   respondFriendRequest,
   sendFriendRequest,
+  unblockUser,
 } from "../actions";
 
 const PRIMARY =
@@ -116,6 +118,55 @@ export function RemoveButton({ userId }: { userId: string }) {
       className={DANGER}
     >
       Retirer
+    </button>
+  );
+}
+
+/** "Bloquer" — confirms, then cuts every social tie with the player. */
+export function BlockButton({ userId }: { userId: string }) {
+  const [pending, start] = useTransition();
+  const toast = useToast();
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() => {
+        if (
+          !window.confirm(
+            "Bloquer ce joueur ? Votre amitié et vos demandes en cours seront supprimées.",
+          )
+        ) {
+          return;
+        }
+        start(async () => {
+          const r = await blockUser(userId);
+          toast({ type: r.ok ? "success" : "error", message: r.message });
+        });
+      }}
+      className={DANGER}
+    >
+      Bloquer
+    </button>
+  );
+}
+
+/** "Débloquer" — restores a blocked player (no social tie is re-created). */
+export function UnblockButton({ userId }: { userId: string }) {
+  const [pending, start] = useTransition();
+  const toast = useToast();
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() =>
+        start(async () => {
+          const r = await unblockUser(userId);
+          toast({ type: r.ok ? "success" : "error", message: r.message });
+        })
+      }
+      className={SUBTLE}
+    >
+      Débloquer
     </button>
   );
 }
