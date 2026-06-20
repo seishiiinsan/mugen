@@ -2,31 +2,48 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { LeaderboardEntry, RankedPlayer } from "@/lib/domain/types";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
+import type {
+  LeaderboardEntry,
+  MonthlyChampion,
+  RankedPlayer,
+} from "@/lib/domain/types";
 import { CoinIcon, CrownIcon } from "../../_components/icons";
 import { UserAvatar } from "../../_components/user-avatar";
 
 const profileHref = (username: string) =>
   `/joueur/${encodeURIComponent(username)}`;
 
-type Board = "monthly" | "coins" | "xp";
+const EASE = [0.22, 1, 0.36, 1] as const;
+const podiumContainer: Variants = {
+  show: { transition: { staggerChildren: 0.14 } },
+};
+const podiumItem: Variants = {
+  hidden: { opacity: 0, y: 18 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: EASE } },
+};
+
+type Board = "monthly" | "coins" | "xp" | "hof";
 
 const TABS: { id: Board; label: string }[] = [
   { id: "monthly", label: "Mensuel" },
   { id: "coins", label: "Plus riches" },
   { id: "xp", label: "Plus d'XP" },
+  { id: "hof", label: "Hall of Fame" },
 ];
 
 export function ClassementTabs({
   monthly,
   coins,
   xp,
+  champions,
   meId,
   monthLabel,
 }: {
   monthly: LeaderboardEntry[];
   coins: RankedPlayer[];
   xp: RankedPlayer[];
+  champions: MonthlyChampion[];
   meId: string;
   monthLabel: string;
 }) {
@@ -75,6 +92,7 @@ export function ClassementTabs({
           caption="L'expérience accumulée à vie. Elle ne retombe jamais et ne rapporte rien d'autre que la gloire."
         />
       )}
+      {tab === "hof" && <HallOfFameBoard champions={champions} />}
     </div>
   );
 }
@@ -98,6 +116,7 @@ function MonthlyBoard({
   meId: string;
   monthLabel: string;
 }) {
+  const reduce = useReducedMotion();
   if (entries.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">
@@ -133,7 +152,12 @@ function MonthlyBoard({
         </p>
       </div>
 
-      <div className="mt-10 mb-6 flex items-end gap-2 sm:gap-3">
+      <motion.div
+        className="mt-10 mb-6 flex items-end gap-2 sm:gap-3"
+        variants={reduce ? undefined : podiumContainer}
+        initial={reduce ? false : "hidden"}
+        animate={reduce ? false : "show"}
+      >
         {podiumOrder.map((entry, i) =>
           entry ? (
             <PodiumSpot
@@ -146,7 +170,7 @@ function MonthlyBoard({
             <div key={`empty-${i}`} className="min-w-0 flex-1" />
           ),
         )}
-      </div>
+      </motion.div>
 
       {topRest.length > 0 && (
         <>
@@ -195,8 +219,12 @@ function PodiumSpot({
   isMe: boolean;
 }) {
   const t = PODIUM[tier];
+  const reduce = useReducedMotion();
   return (
-    <div className="flex min-w-0 flex-1 flex-col items-center">
+    <motion.div
+      variants={reduce ? undefined : podiumItem}
+      className="flex min-w-0 flex-1 flex-col items-center"
+    >
       <Link href={profileHref(entry.username)} className="relative mb-2 block">
         {tier === 0 && (
           <CrownIcon className="absolute -top-5 left-1/2 h-5 w-5 -translate-x-1/2 text-gold" />
@@ -232,7 +260,7 @@ function PodiumSpot({
         <span className={`text-sm font-bold ${t.medal}`}>{t.label}</span>
         <span className="mt-0.5 text-[10px] text-faint">{t.reward}</span>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -274,6 +302,103 @@ function MonthlyRow({ entry, isMe }: { entry: LeaderboardEntry; isMe: boolean })
         <span className="ml-1 text-xs font-normal text-faint">pts</span>
       </span>
     </li>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Hall of Fame — past monthly podiums, frozen at each close (monthly_champions).
+// ---------------------------------------------------------------------------
+
+function monthLabelFromKey(key: string): string {
+  const [y, m] = key.split("-").map(Number);
+  return new Intl.DateTimeFormat("fr-FR", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(Date.UTC(y, m - 1, 1)));
+}
+
+function HallOfFameBoard({ champions }: { champions: MonthlyChampion[] }) {
+  if (champions.length === 0) {
+    return (
+      <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">
+        Aucun champion archivé pour le moment. Le podium rejoindra le Hall of
+        Fame à la première clôture de mois.
+      </p>
+    );
+  }
+
+  // Champions arrive ordered (month desc, rank asc); group by month in place.
+  const months: { month: string; rows: MonthlyChampion[] }[] = [];
+  for (const c of champions) {
+    let g = months.find((m) => m.month === c.month);
+    if (!g) {
+      g = { month: c.month, rows: [] };
+      months.push(g);
+    }
+    g.rows.push(c);
+  }
+
+  return (
+    <>
+      <p className="mb-4 text-xs text-faint">
+        Les podiums passés, figés pour la postérité — un nouveau les rejoint à
+        chaque clôture mensuelle.
+      </p>
+      <div className="space-y-5">
+        {months.map((g) => (
+          <div key={g.month}>
+            <div className="mb-2 flex items-center gap-3">
+              <span className="text-xs font-medium uppercase tracking-wide text-faint">
+                <span className="capitalize">{monthLabelFromKey(g.month)}</span>
+              </span>
+              <span className="h-px flex-1 bg-border" />
+            </div>
+            <ol className="space-y-2">
+              {g.rows.map((c) => (
+                <li
+                  key={c.userId}
+                  className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3"
+                >
+                  <span
+                    className={`w-7 shrink-0 text-center font-mono text-sm font-bold tabular-nums ${
+                      RANK_MEDAL[c.rank] ?? "text-muted"
+                    }`}
+                  >
+                    {c.rank}
+                  </span>
+                  <Link href={profileHref(c.username)} className="shrink-0">
+                    <UserAvatar
+                      username={c.username}
+                      avatarUrl={c.avatarUrl}
+                      sizes="36px"
+                      className="size-9 rounded-full border border-border bg-surface-2 text-sm font-semibold"
+                    />
+                  </Link>
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={profileHref(c.username)}
+                      className="truncate font-medium hover:text-accent"
+                    >
+                      {c.username}
+                    </Link>
+                    <div className="text-xs text-faint">
+                      {c.exacts} score{c.exacts > 1 ? "s" : ""} exact
+                      {c.exacts > 1 ? "s" : ""}
+                    </div>
+                  </div>
+                  <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                    {c.points}
+                    <span className="ml-1 text-xs font-normal text-faint">
+                      pts
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 

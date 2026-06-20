@@ -36,6 +36,9 @@ import type {
   AdminPlayerDetail,
   LeaderboardEntry,
   RankedPlayer,
+  MonthlyChampion,
+  MySeason,
+  SeasonReward,
   NotificationItem,
   Prediction,
   ProfileOverview,
@@ -494,6 +497,141 @@ export async function getMyMonthlyStats(): Promise<MonthlyStats> {
     rank: Number(row.rank),
     exactScores: Number(row.exact_scores),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Season pass — tiers progressed by playing the active month, claimed for coins
+// (+ a repeatable badge at the top). Catalogue is DB-authoritative; see
+// migration 0036 and lib/domain/season.ts.
+// ---------------------------------------------------------------------------
+
+/** Fallback catalogue when Supabase isn't configured (mirrors the 0036 seed). */
+const SEASON_REWARDS_FALLBACK: SeasonReward[] = [
+  { tier: 1, minPoints: 30, coins: 50, badgeKey: null, name: "Recrue" },
+  { tier: 2, minPoints: 80, coins: 80, badgeKey: null, name: "Habitué" },
+  { tier: 3, minPoints: 150, coins: 130, badgeKey: null, name: "Régulier" },
+  { tier: 4, minPoints: 250, coins: 200, badgeKey: null, name: "Assidu" },
+  { tier: 5, minPoints: 400, coins: 300, badgeKey: "badge_season", name: "Vétéran" },
+];
+
+interface SeasonRewardRow {
+  tier: number;
+  min_points: number;
+  coins: number;
+  badge_key: string | null;
+  name: string;
+}
+
+const getCachedSeasonRewards = unstable_cache(
+  async (): Promise<SeasonReward[]> => {
+    const supabase = createPublicClient();
+    const { data } = await supabase
+      .from("season_rewards")
+      .select("tier, min_points, coins, badge_key, name")
+      .order("tier");
+    const rows = (data as SeasonRewardRow[] | null) ?? [];
+    if (rows.length === 0) return SEASON_REWARDS_FALLBACK;
+    return rows.map((r) => ({
+      tier: r.tier,
+      minPoints: r.min_points,
+      coins: r.coins,
+      badgeKey: r.badge_key,
+      name: r.name,
+    }));
+  },
+  ["season-rewards"],
+  { revalidate: 3600 },
+);
+
+/** Season-pass tier catalogue (DB-authoritative, cached — rarely changes). */
+export async function getSeasonRewards(): Promise<SeasonReward[]> {
+  if (!isSupabaseConfigured()) return SEASON_REWARDS_FALLBACK;
+  return getCachedSeasonRewards();
+}
+
+/**
+ * The current user's season pass for the active month: month points + each
+ * tier's reached/claimed state. Per-user, so not cached. Claims are filtered to
+ * the grace-lagged active month — the same key `claim_season_tier` writes.
+ */
+export async function getMySeason(): Promise<MySeason> {
+  const rewards = await getSeasonRewards();
+  const locked = (): MySeason => ({
+    points: 0,
+    tiers: rewards.map((r) => ({ ...r, reached: false, claimed: false })),
+  });
+  if (!isSupabaseConfigured()) return locked();
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return locked();
+
+  const [{ data: rankData }, { data: claimRows }] = await Promise.all([
+    supabase.rpc("my_monthly_rank"),
+    supabase
+      .from("season_claims")
+      .select("tier")
+      .eq("user_id", user.id)
+      .eq("month", activeLeaderboardMonth()),
+  ]);
+
+  const points = Number(
+    ((rankData as MyMonthlyRankRow[] | null) ?? [])[0]?.points ?? 0,
+  );
+  const claimed = new Set(
+    ((claimRows as { tier: number }[] | null) ?? []).map((r) => r.tier),
+  );
+
+  return {
+    points,
+    tiers: rewards.map((r) => ({
+      ...r,
+      reached: points >= r.minPoints,
+      claimed: claimed.has(r.tier),
+    })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Hall of Fame — past monthly champions, frozen at payout (monthly_champions).
+// Public data (pseudo + podium); join + limit run in SQL via `hall_of_fame`,
+// cached and invalidated alongside the leaderboards.
+// ---------------------------------------------------------------------------
+
+interface HallOfFameRow {
+  month: string;
+  rank: number;
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  points: number;
+  exacts: number;
+}
+
+const getCachedMonthlyChampions = unstable_cache(
+  async (): Promise<MonthlyChampion[]> => {
+    const supabase = createPublicClient();
+    const { data } = await supabase.rpc("hall_of_fame", { limit_count: 60 });
+    return ((data as HallOfFameRow[] | null) ?? []).map((r) => ({
+      month: r.month,
+      rank: Number(r.rank),
+      userId: r.user_id,
+      username: r.username,
+      avatarUrl: r.avatar_url ?? undefined,
+      points: Number(r.points),
+      exacts: Number(r.exacts),
+    }));
+  },
+  ["monthly-champions"],
+  { tags: [LEADERBOARD_TAG], revalidate: LEADERBOARD_REVALIDATE },
+);
+
+/** Past monthly champions (Hall of Fame), most-recent month first. */
+export async function getMonthlyChampions(): Promise<MonthlyChampion[]> {
+  if (!isSupabaseConfigured()) return [];
+  return getCachedMonthlyChampions();
 }
 
 /** Standard competition ranking by `value` desc (ties share a rank). */

@@ -7,6 +7,7 @@ import {
   MatchesIcon,
   PredictionsIcon,
   RankingIcon,
+  SeasonIcon,
   ShopIcon,
 } from "./icons";
 
@@ -15,6 +16,7 @@ const TABS = [
   { href: "/matchs", label: "Matchs", Icon: MatchesIcon },
   { href: "/mes-pronostics", label: "Pronostics", Icon: PredictionsIcon },
   { href: "/classement", label: "Classement", Icon: RankingIcon },
+  { href: "/saison", label: "Saison", Icon: SeasonIcon },
   { href: "/groupes", label: "Groupes", Icon: GroupsIcon },
   { href: "/boutique", label: "Boutique", Icon: ShopIcon },
 ] as const;

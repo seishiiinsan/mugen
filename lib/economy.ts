@@ -176,6 +176,15 @@ export async function payoutMonthIfDue(admin: Admin): Promise<void> {
     .sort((a, b) => b.points - a.points || b.exacts - a.exacts);
   if (standings.length === 0) return;
 
+  // Hall of Fame: this month's podium, frozen so it survives the board reset.
+  const champions: {
+    month: string;
+    user_id: string;
+    rank: number;
+    points: number;
+    exacts: number;
+  }[] = [];
+
   let rank = 0;
   let prevPts = Number.NaN;
   let prevEx = Number.NaN;
@@ -204,5 +213,26 @@ export async function payoutMonthIfDue(admin: Admin): Promise<void> {
         p_key: badge,
       });
     }
+    // Podium (ties included): archived into the Hall of Fame below.
+    if (rank <= 3) {
+      champions.push({
+        month,
+        user_id: s.userId,
+        rank,
+        points: s.points,
+        exacts: s.exacts,
+      });
+    }
+  }
+
+  // Freeze the podium into the Hall of Fame. Idempotent on (month, user_id), so
+  // re-running settle never duplicates a champion.
+  if (champions.length > 0) {
+    await admin
+      .from("monthly_champions")
+      .upsert(champions, {
+        onConflict: "month,user_id",
+        ignoreDuplicates: true,
+      });
   }
 }
