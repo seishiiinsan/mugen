@@ -369,6 +369,8 @@ export interface ProfileOverview {
   lifetimePoints: number | null;
   exactScores: number | null;
   achievementKeys: string[] | null;
+  /** True when the viewer has blocked this player. */
+  blocked: boolean;
 }
 
 /** A player's upcoming prediction, exposed if visibility allows. */

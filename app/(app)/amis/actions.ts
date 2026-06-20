@@ -65,6 +65,14 @@ export async function removeFriend(otherId: string): Promise<ActionResult> {
   return rpcRefresh("remove_friend", { p_other: otherId }, "Ami retiré.");
 }
 
+export async function blockUser(targetId: string): Promise<ActionResult> {
+  return rpcRefresh("block_user", { p_target: targetId }, "Joueur bloqué.");
+}
+
+export async function unblockUser(targetId: string): Promise<ActionResult> {
+  return rpcRefresh("unblock_user", { p_target: targetId }, "Joueur débloqué.");
+}
+
 /** Load notifications for the bell panel and mark them read in one round-trip. */
 export async function openNotifications(): Promise<NotificationItem[]> {
   if (!isSupabaseConfigured()) return [];

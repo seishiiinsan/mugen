@@ -1488,6 +1488,7 @@ interface OverviewRow {
   lifetime_points: number | null;
   exact_scores: number | null;
   achievement_keys: string[] | null;
+  blocked: boolean;
 }
 
 /** Public profile overview by username (aspects gated server-side). */
@@ -1526,6 +1527,7 @@ export async function getProfileOverview(
     lifetimePoints: num(r.lifetime_points),
     exactScores: num(r.exact_scores),
     achievementKeys: r.achievement_keys ?? null,
+    blocked: Boolean(r.blocked),
   };
 }
 
