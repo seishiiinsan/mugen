@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getFixture, getMyBoostStock, getPredictionForFixture } from "@/lib/data";
+import { getFixture, getFixtures, getMyBoostStock, getPredictionForFixture } from "@/lib/data";
 import { isPredictionOpen, lockTime } from "@/lib/domain/predictions";
 import { SCORING_RULES } from "@/lib/domain/scoring";
 import { BOOSTS, leaderboardMonth } from "@/lib/domain/boosts";
+import { filterFixtures, fixtureFiltersQuery } from "@/lib/domain/fixtures-filter";
 import { isScorerHit, scoreFull, type FullScore } from "@/lib/domain/markets";
 import type { BoostType, ScorerPick } from "@/lib/domain/types";
 import { fetchMatchExtras } from "@/lib/bzzoiro/match-extras";
 import { formatKickoff, formatMatchDay, formatTime } from "@/lib/ui/format";
-import { ChevronLeftIcon, LockIcon } from "../../_components/icons";
+import { ChevronLeftIcon, ChevronRightIcon, LockIcon } from "../../_components/icons";
 import { StatusBadge } from "../../_components/status-badge";
 import { TeamCrest } from "../../_components/team-crest";
 import { PredictionForm, type ScorerOption } from "./prediction-form";
@@ -40,6 +41,10 @@ export async function generateMetadata(
   };
 }
 
+function one(value: string | string[] | undefined): string {
+  return (Array.isArray(value) ? value[0] : value) ?? "";
+}
+
 export default async function FixturePage(
   props: PageProps<"/matchs/[fixtureId]">,
 ) {
@@ -49,6 +54,28 @@ export default async function FixturePage(
 
   const fixture = await getFixture(id);
   if (!fixture) notFound();
+
+  const sp = await props.searchParams;
+  const filters = {
+    status: one(sp.status),
+    league: one(sp.league),
+    q: one(sp.q),
+  };
+  const filtersQuery = fixtureFiltersQuery(filters);
+  const backHref = filtersQuery ? `/matchs?${filtersQuery}` : "/matchs";
+
+  // Prev/next within the same filtered+sorted list the matches page shows —
+  // so navigating "suivant" from a World Cup match stays in the World Cup.
+  const allFixtures = await getFixtures();
+  const filtered = filterFixtures(allFixtures, filters);
+  const currentIndex = filtered.findIndex((f) => f.id === id);
+  const prevFixture = currentIndex > 0 ? filtered[currentIndex - 1] : null;
+  const nextFixture =
+    currentIndex >= 0 && currentIndex < filtered.length - 1
+      ? filtered[currentIndex + 1]
+      : null;
+  const navHref = (targetId: number) =>
+    filtersQuery ? `/matchs/${targetId}?${filtersQuery}` : `/matchs/${targetId}`;
 
   const [prediction, extras] = await Promise.all([
     getPredictionForFixture(id),
@@ -158,13 +185,20 @@ export default async function FixturePage(
 
   return (
     <article className="space-y-4">
-      <Link
-        href="/matchs"
-        className="inline-flex items-center gap-1 text-sm text-muted transition-colors hover:text-foreground"
-      >
-        <ChevronLeftIcon className="size-4" />
-        Tous les matchs
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          href={backHref}
+          className="inline-flex items-center gap-1 text-sm text-muted transition-colors hover:text-foreground"
+        >
+          <ChevronLeftIcon className="size-4" />
+          Tous les matchs
+        </Link>
+
+        <div className="flex items-center gap-2">
+          <FixtureNavLink fixture={prevFixture} href={prevFixture ? navHref(prevFixture.id) : null} direction="prev" />
+          <FixtureNavLink fixture={nextFixture} href={nextFixture ? navHref(nextFixture.id) : null} direction="next" />
+        </div>
+      </div>
 
       {/* Hero */}
       <header className="rounded-xl border border-border bg-surface p-6">
@@ -211,6 +245,33 @@ export default async function FixturePage(
         }
       />
     </article>
+  );
+}
+
+function FixtureNavLink({
+  fixture,
+  href,
+  direction,
+}: {
+  fixture: { home: { name: string }; away: { name: string } } | null;
+  href: string | null;
+  direction: "prev" | "next";
+}) {
+  if (!fixture || !href) return null;
+  const label = `${fixture.home.name} – ${fixture.away.name}`;
+  return (
+    <Link
+      href={href}
+      title={label}
+      aria-label={`${direction === "prev" ? "Match précédent" : "Match suivant"} : ${label}`}
+      className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-sm text-muted transition-colors hover:border-border-strong hover:text-foreground"
+    >
+      {direction === "prev" && <ChevronLeftIcon className="size-4" />}
+      <span className="max-w-[9rem] truncate sm:max-w-[14rem]">
+        {direction === "prev" ? "Précédent" : "Suivant"}
+      </span>
+      {direction === "next" && <ChevronRightIcon className="size-4" />}
+    </Link>
   );
 }
 

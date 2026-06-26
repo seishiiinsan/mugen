@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import Link from "next/link";
 import type { Fixture } from "@/lib/domain/types";
 import { getActualScorers, getFixtures, getMyPredictions } from "@/lib/data";
+import { filterFixtures, fixtureFiltersQuery } from "@/lib/domain/fixtures-filter";
 import { FixtureCard } from "../_components/fixture-card";
 import { MatchesIcon } from "../_components/icons";
 import { FilterBar } from "./_components/filter-bar";
@@ -40,21 +41,9 @@ export default async function MatchsPage(props: PageProps<"/matchs">) {
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name, "fr"));
 
-  // Apply filters.
-  const needle = q.toLowerCase();
-  const filtered = all.filter((f) => {
-    if ((status === "live" || status === "upcoming") && f.status !== status)
-      return false;
-    if (league && String(f.league.id) !== league) return false;
-    if (
-      needle &&
-      !f.home.name.toLowerCase().includes(needle) &&
-      !f.away.name.toLowerCase().includes(needle) &&
-      !f.league.name.toLowerCase().includes(needle)
-    )
-      return false;
-    return true;
-  });
+  // Apply filters (shared with the detail page's prev/next navigation).
+  const filtered = filterFixtures(all, { status, league, q });
+  const filtersQuery = fixtureFiltersQuery({ status, league, q });
 
   const liveCount = all.filter((f) => f.status === "live").length;
   const monthLabel = new Intl.DateTimeFormat("fr-FR", {
@@ -143,6 +132,7 @@ export default async function MatchsPage(props: PageProps<"/matchs">) {
                   fixture={fixture}
                   prediction={byFixture.get(fixture.id)}
                   actualScorers={scorers.get(fixture.id) ?? null}
+                  filtersQuery={filtersQuery}
                 />
               </Fragment>
             );

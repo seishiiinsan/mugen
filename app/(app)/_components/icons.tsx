@@ -164,6 +164,14 @@ export function ChevronLeftIcon({ className }: IconProps) {
   );
 }
 
+export function ChevronRightIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M9 6l6 6-6 6" />
+    </svg>
+  );
+}
+
 export function FriendsIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>
