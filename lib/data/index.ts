@@ -426,6 +426,10 @@ interface MonthlyRow {
   avatar_url: string | null;
   points: number;
   exact_scores: number;
+  equipped_frame: string | null;
+  equipped_color: string | null;
+  equipped_title: string | null;
+  equipped_badge: string | null;
 }
 
 /**
@@ -446,6 +450,10 @@ const getCachedMonthlyLeaderboard = unstable_cache(
       points: Number(r.points),
       exactScores: Number(r.exact_scores),
       avatarUrl: r.avatar_url ?? undefined,
+      equippedFrame: r.equipped_frame,
+      equippedColor: r.equipped_color,
+      equippedTitle: r.equipped_title,
+      equippedBadge: r.equipped_badge,
     }));
   },
   ["monthly-leaderboard"],
@@ -610,6 +618,10 @@ interface HallOfFameRow {
   avatar_url: string | null;
   points: number;
   exacts: number;
+  equipped_frame: string | null;
+  equipped_color: string | null;
+  equipped_title: string | null;
+  equipped_badge: string | null;
 }
 
 const getCachedMonthlyChampions = unstable_cache(
@@ -624,6 +636,10 @@ const getCachedMonthlyChampions = unstable_cache(
       avatarUrl: r.avatar_url ?? undefined,
       points: Number(r.points),
       exacts: Number(r.exacts),
+      equippedFrame: r.equipped_frame,
+      equippedColor: r.equipped_color,
+      equippedTitle: r.equipped_title,
+      equippedBadge: r.equipped_badge,
     }));
   },
   ["monthly-champions"],
@@ -966,6 +982,10 @@ interface GroupLeaderboardRow {
   avatar_url: string | null;
   points: number;
   exact_scores: number;
+  equipped_frame: string | null;
+  equipped_color: string | null;
+  equipped_title: string | null;
+  equipped_badge: string | null;
 }
 
 /** Monthly ranking restricted to a group's members (0-point members included). */
@@ -988,6 +1008,10 @@ export async function getGroupLeaderboard(
     points: Number(r.points),
     exactScores: Number(r.exact_scores),
     avatarUrl: r.avatar_url ?? undefined,
+    equippedFrame: r.equipped_frame,
+    equippedColor: r.equipped_color,
+    equippedTitle: r.equipped_title,
+    equippedBadge: r.equipped_badge,
   }));
 }
 
@@ -1583,6 +1607,7 @@ interface IdentityRow {
   id: string;
   username: string;
   avatar_url: string | null;
+  equipped_frame: string | null;
   equipped_title: string | null;
   equipped_color: string | null;
   equipped_badge: string | null;
@@ -1604,6 +1629,7 @@ export async function searchUsers(query: string): Promise<UserSearchResult[]> {
       id: r.id,
       username: r.username,
       avatarUrl: r.avatar_url ?? undefined,
+      equippedFrame: r.equipped_frame,
       equippedTitle: r.equipped_title,
       equippedColor: r.equipped_color,
       equippedBadge: r.equipped_badge,
@@ -1613,7 +1639,6 @@ export async function searchUsers(query: string): Promise<UserSearchResult[]> {
 }
 
 interface FriendRow extends IdentityRow {
-  equipped_frame: string | null;
   lifetime_points: number;
   achievement_keys: string[] | null;
 }
@@ -1661,6 +1686,7 @@ export async function getMyFriendRequests(): Promise<FriendRequest[]> {
     id: r.id,
     username: r.username,
     avatarUrl: r.avatar_url ?? undefined,
+    equippedFrame: r.equipped_frame,
     equippedTitle: r.equipped_title,
     equippedColor: r.equipped_color,
     equippedBadge: r.equipped_badge,

@@ -153,6 +153,7 @@ function RequestRow({ request: r }: { request: FriendRequest }) {
       <IdentityCell
         username={r.username}
         avatarUrl={r.avatarUrl}
+        equippedFrame={r.equippedFrame}
         equippedColor={r.equippedColor}
         equippedTitle={r.equippedTitle}
         equippedBadge={r.equippedBadge}

@@ -5,7 +5,7 @@ import {
   getFixturesByIds,
   getMyPredictions,
 } from "@/lib/data";
-import { scoreBoosted } from "@/lib/domain/boosts";
+import { activeLeaderboardMonth, leaderboardMonth, scoreBoosted } from "@/lib/domain/boosts";
 import { FixtureCard } from "../_components/fixture-card";
 import { PredictionsIcon } from "../_components/icons";
 import { PronosFilterBar } from "./_components/pronos-filter-bar";
@@ -66,9 +66,17 @@ export default async function MesPronosticsPage(
   // Overall stats are always computed on every prediction (independent of the
   // active filters), so the cards reflect the player's true totals.
   const allFinished = rows.filter((r) => r.earned != null);
-  const totalPoints = allFinished.reduce((sum, r) => sum + (r.earned ?? 0), 0);
   const exactScores = allFinished.filter((r) => r.exact).length;
   const pendingTotal = rows.length - allFinished.length;
+
+  // "Points gagnés" mirrors /profil and /saison: same active-month window
+  // (active_month_start / activeLeaderboardMonth), not a lifetime total —
+  // otherwise this card disagrees with the rest of the app.
+  const activeMonth = activeLeaderboardMonth();
+  const monthlyFinished = allFinished.filter(
+    (r) => leaderboardMonth(r.fixture.kickoff) === activeMonth,
+  );
+  const totalPoints = monthlyFinished.reduce((sum, r) => sum + (r.earned ?? 0), 0);
 
   // League options for the filter, derived from the predicted fixtures.
   const leagueNames = new Map<number, string>();
@@ -150,7 +158,7 @@ export default async function MesPronosticsPage(
         <>
           <div className="mb-6 grid grid-cols-3 gap-3">
             <Stat label="Pronostics" value={rows.length} />
-            <Stat label="Points gagnés" value={totalPoints} />
+            <Stat label="Points du mois" value={totalPoints} />
             <Stat label="Scores exacts" value={exactScores} />
           </div>
 

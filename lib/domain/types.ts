@@ -84,6 +84,11 @@ export interface LeaderboardEntry {
   exactScores: number;
   /** Profile picture (Supabase Storage or OAuth), undefined if none set. */
   avatarUrl?: string;
+  /** Equipped cosmetic item keys (null when none) — same as on the profile. */
+  equippedFrame: string | null;
+  equippedColor: string | null;
+  equippedTitle: string | null;
+  equippedBadge: string | null;
 }
 
 /** A ranked player on an all-time board (coins or XP) — no rewards, no reset. */
@@ -139,6 +144,11 @@ export interface MonthlyChampion {
   avatarUrl?: string;
   points: number;
   exacts: number;
+  /** Equipped cosmetic item keys (null when none) — same as on the profile. */
+  equippedFrame: string | null;
+  equippedColor: string | null;
+  equippedTitle: string | null;
+  equippedBadge: string | null;
 }
 
 export interface UserProfile {
@@ -421,6 +431,7 @@ export interface PlayerIdentity {
   id: string;
   username: string;
   avatarUrl?: string;
+  equippedFrame: string | null;
   equippedTitle: string | null;
   equippedColor: string | null;
   equippedBadge: string | null;
@@ -428,7 +439,6 @@ export interface PlayerIdentity {
 
 /** A friend in the viewer's list, with computed level. */
 export interface FriendSummary extends PlayerIdentity {
-  equippedFrame: string | null;
   lifetimePoints: number;
   achievementKeys: string[];
   level: number;

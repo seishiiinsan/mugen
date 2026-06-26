@@ -109,11 +109,18 @@ export const MOCK_PREDICTIONS: Prediction[] = [
   },
 ];
 
+const NO_COSMETICS = {
+  equippedFrame: null,
+  equippedColor: null,
+  equippedTitle: null,
+  equippedBadge: null,
+} as const;
+
 export const MOCK_LEADERBOARD: LeaderboardEntry[] = [
-  { rank: 1, userId: "u_1", username: "ScorePerfect", points: 312, exactScores: 21 },
-  { rank: 2, userId: "u_2", username: "PronoKing", points: 298, exactScores: 18 },
-  { rank: 3, userId: "u_3", username: "Mbappe_fan", points: 271, exactScores: 16 },
-  { rank: 4, userId: "u_4", username: "TacticsNerd", points: 244, exactScores: 12 },
-  { rank: 5, userId: "u_5", username: "GegenPress", points: 219, exactScores: 11 },
-  { rank: 42, userId: CURRENT_USER.id, username: CURRENT_USER.username, points: 128, exactScores: 6 },
+  { rank: 1, userId: "u_1", username: "ScorePerfect", points: 312, exactScores: 21, ...NO_COSMETICS },
+  { rank: 2, userId: "u_2", username: "PronoKing", points: 298, exactScores: 18, ...NO_COSMETICS },
+  { rank: 3, userId: "u_3", username: "Mbappe_fan", points: 271, exactScores: 16, ...NO_COSMETICS },
+  { rank: 4, userId: "u_4", username: "TacticsNerd", points: 244, exactScores: 12, ...NO_COSMETICS },
+  { rank: 5, userId: "u_5", username: "GegenPress", points: 219, exactScores: 11, ...NO_COSMETICS },
+  { rank: 42, userId: CURRENT_USER.id, username: CURRENT_USER.username, points: 128, exactScores: 6, ...NO_COSMETICS },
 ];
