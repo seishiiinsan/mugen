@@ -7,6 +7,7 @@ import {
   getGroupPot,
 } from "@/lib/data";
 import type { LeaderboardEntry } from "@/lib/domain/types";
+import { BADGE_META, frameRing, nameColor, titleText } from "@/lib/domain/cosmetics";
 import { UserAvatar } from "../../_components/user-avatar";
 import { CopyCode } from "../_components/copy-code";
 import { GroupActions } from "../_components/group-actions";
@@ -41,20 +42,26 @@ function MemberRow({
           username={entry.username}
           avatarUrl={entry.avatarUrl}
           sizes="36px"
-          className="size-9 rounded-full border border-border bg-surface-2 text-sm font-semibold"
+          className={`size-9 rounded-full border bg-surface-2 text-sm font-semibold ${
+            frameRing(entry.equippedFrame) || "border-border"
+          }`}
         />
       </Link>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Link
             href={`/joueur/${encodeURIComponent(entry.username)}`}
-            className="truncate font-medium hover:text-accent"
+            className={`truncate font-medium hover:text-accent ${nameColor(entry.equippedColor)}`}
           >
             {entry.username}
           </Link>
+          {entry.equippedBadge && BADGE_META[entry.equippedBadge] && (
+            <span aria-hidden>{BADGE_META[entry.equippedBadge].emoji}</span>
+          )}
           {isMe && <span className="shrink-0 text-xs text-accent">vous</span>}
         </div>
         <div className="text-xs text-faint">
+          {titleText(entry.equippedTitle) && `${titleText(entry.equippedTitle)} · `}
           {entry.exactScores} score{entry.exactScores > 1 ? "s" : ""} exact
           {entry.exactScores > 1 ? "s" : ""}
         </div>

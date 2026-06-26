@@ -8,6 +8,7 @@ import type {
   MonthlyChampion,
   RankedPlayer,
 } from "@/lib/domain/types";
+import { BADGE_META, frameRing, nameColor, titleText } from "@/lib/domain/cosmetics";
 import { CoinIcon, CrownIcon } from "../../_components/icons";
 import { UserAvatar } from "../../_components/user-avatar";
 
@@ -244,10 +245,16 @@ function PodiumSpot({
 
       <Link
         href={profileHref(entry.username)}
-        className="mt-1 max-w-full truncate text-sm font-semibold hover:text-accent"
+        className={`mt-1 flex max-w-full items-center gap-1 truncate text-sm font-semibold hover:text-accent ${nameColor(entry.equippedColor)}`}
       >
-        {entry.username}
+        <span className="truncate">{entry.username}</span>
+        {entry.equippedBadge && BADGE_META[entry.equippedBadge] && (
+          <span aria-hidden>{BADGE_META[entry.equippedBadge].emoji}</span>
+        )}
       </Link>
+      {titleText(entry.equippedTitle) && (
+        <span className="text-[11px] text-faint">{titleText(entry.equippedTitle)}</span>
+      )}
       {isMe && <span className="text-xs text-accent">vous</span>}
       <span className="font-mono text-sm font-semibold tabular-nums">
         {entry.points}
@@ -279,20 +286,26 @@ function MonthlyRow({ entry, isMe }: { entry: LeaderboardEntry; isMe: boolean })
           username={entry.username}
           avatarUrl={entry.avatarUrl}
           sizes="36px"
-          className="size-9 rounded-full border border-border bg-surface-2 text-sm font-semibold"
+          className={`size-9 rounded-full border bg-surface-2 text-sm font-semibold ${
+            frameRing(entry.equippedFrame) || "border-border"
+          }`}
         />
       </Link>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Link
             href={profileHref(entry.username)}
-            className="truncate font-medium hover:text-accent"
+            className={`truncate font-medium hover:text-accent ${nameColor(entry.equippedColor)}`}
           >
             {entry.username}
           </Link>
+          {entry.equippedBadge && BADGE_META[entry.equippedBadge] && (
+            <span aria-hidden>{BADGE_META[entry.equippedBadge].emoji}</span>
+          )}
           {isMe && <span className="shrink-0 text-xs text-accent">vous</span>}
         </div>
         <div className="text-xs text-faint">
+          {titleText(entry.equippedTitle) && `${titleText(entry.equippedTitle)} · `}
           {entry.exactScores} score{entry.exactScores > 1 ? "s" : ""} exact
           {entry.exactScores > 1 ? "s" : ""}
         </div>
@@ -371,17 +384,25 @@ function HallOfFameBoard({ champions }: { champions: MonthlyChampion[] }) {
                       username={c.username}
                       avatarUrl={c.avatarUrl}
                       sizes="36px"
-                      className="size-9 rounded-full border border-border bg-surface-2 text-sm font-semibold"
+                      className={`size-9 rounded-full border bg-surface-2 text-sm font-semibold ${
+                        frameRing(c.equippedFrame) || "border-border"
+                      }`}
                     />
                   </Link>
                   <div className="min-w-0 flex-1">
-                    <Link
-                      href={profileHref(c.username)}
-                      className="truncate font-medium hover:text-accent"
-                    >
-                      {c.username}
-                    </Link>
+                    <div className="flex items-center gap-1.5">
+                      <Link
+                        href={profileHref(c.username)}
+                        className={`truncate font-medium hover:text-accent ${nameColor(c.equippedColor)}`}
+                      >
+                        {c.username}
+                      </Link>
+                      {c.equippedBadge && BADGE_META[c.equippedBadge] && (
+                        <span aria-hidden>{BADGE_META[c.equippedBadge].emoji}</span>
+                      )}
+                    </div>
                     <div className="text-xs text-faint">
+                      {titleText(c.equippedTitle) && `${titleText(c.equippedTitle)} · `}
                       {c.exacts} score{c.exacts > 1 ? "s" : ""} exact
                       {c.exacts > 1 ? "s" : ""}
                     </div>

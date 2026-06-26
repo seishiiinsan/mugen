@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { BADGE_META, nameColor, titleText } from "@/lib/domain/cosmetics";
+import { BADGE_META, frameRing, nameColor, titleText } from "@/lib/domain/cosmetics";
 import { UserAvatar } from "../../_components/user-avatar";
 import { SearchIcon } from "../../_components/icons";
 import { searchUsersAction, type SearchState } from "../actions";
@@ -54,7 +54,9 @@ export function FriendSearch() {
                 <UserAvatar
                   username={u.username}
                   avatarUrl={u.avatarUrl}
-                  className="size-9 rounded-full border border-border bg-surface-2 text-sm font-semibold"
+                  className={`size-9 rounded-full border bg-surface-2 text-sm font-semibold ${
+                    frameRing(u.equippedFrame) || "border-border"
+                  }`}
                 />
                 <span className="min-w-0">
                   <span className="flex items-center gap-1.5">
