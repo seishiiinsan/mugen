@@ -18,11 +18,14 @@ export function FixtureCard({
   fixture,
   prediction,
   actualScorers,
+  filtersQuery,
 }: {
   fixture: Fixture;
   prediction?: Prediction | null;
   /** Real scorers of the match (ids + names) — drives the settled breakdown. */
   actualScorers?: { ids: number[]; names: string[] } | null;
+  /** Active list filters (`?status=&league=&q=`), carried into the detail page so its prev/next nav matches. */
+  filtersQuery?: string;
 }) {
   const showScore = fixture.score !== null;
   const winner = resolveWinner(fixture);
@@ -69,7 +72,7 @@ export function FixtureCard({
 
   return (
     <Link
-      href={`/matchs/${fixture.id}`}
+      href={filtersQuery ? `/matchs/${fixture.id}?${filtersQuery}` : `/matchs/${fixture.id}`}
       className={`press block overflow-hidden rounded-xl border bg-surface transition-all hover:border-border-strong hover:shadow-[0_2px_14px_rgba(0,0,0,0.06)] ${
         isLive ? "border-l-2 border-l-danger" : "border-border"
       }`}
